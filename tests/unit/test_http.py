@@ -4,7 +4,28 @@ import httpx
 import pytest
 
 import trellis.generation.http as http_module
-from trellis.generation.http import post_with_retry
+from trellis.generation.http import extract_anthropic_text, post_with_retry
+
+
+def test_extract_anthropic_text_skips_leading_thinking_block():
+    body = {
+        "content": [
+            {"type": "thinking", "thinking": "", "signature": "abc"},
+            {"type": "text", "text": "the actual answer"},
+        ]
+    }
+    assert extract_anthropic_text(body) == "the actual answer"
+
+
+def test_extract_anthropic_text_works_when_text_is_first_block():
+    body = {"content": [{"type": "text", "text": "the actual answer"}]}
+    assert extract_anthropic_text(body) == "the actual answer"
+
+
+def test_extract_anthropic_text_raises_when_no_text_block():
+    body = {"content": [{"type": "thinking", "thinking": "", "signature": "abc"}]}
+    with pytest.raises(ValueError):
+        extract_anthropic_text(body)
 
 
 async def _no_sleep(_delay: float) -> None:

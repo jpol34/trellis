@@ -20,6 +20,18 @@ _MAX_RETRIES = 5
 _BASE_DELAY_S = 2.0
 
 
+def extract_anthropic_text(response_body: dict[str, Any]) -> str:
+    """Returns the first `text`-type block from an Anthropic Messages API response.
+
+    The `content` array isn't guaranteed to start with the text block — models that use
+    extended thinking prepend a `thinking`-type block first, so indexing `content[0]` directly
+    breaks whenever thinking is present (on by default for some models/requests)."""
+    for block in response_body.get("content", []):
+        if block.get("type") == "text":
+            return block["text"]
+    raise ValueError(f"no text block found in Anthropic response content: {response_body!r}")
+
+
 async def post_with_retry(client: httpx.AsyncClient, url: str, **kwargs: Any) -> httpx.Response:
     for attempt in range(_MAX_RETRIES + 1):
         resp = await client.post(url, **kwargs)

@@ -18,7 +18,7 @@ import yaml
 from faker import Faker
 
 from trellis.generation.distractors import build_candidates
-from trellis.generation.http import post_with_retry
+from trellis.generation.http import extract_anthropic_text, post_with_retry
 from trellis.generation.personas import Persona, generate_personas
 from trellis.generation.values import generate_value
 from trellis.schema.loader import REPO_ROOT
@@ -116,7 +116,7 @@ async def _call_transcript_model(client: httpx.AsyncClient, prompt: str) -> str:
         },
         timeout=120.0,
     )
-    return resp.json()["content"][0]["text"]
+    return extract_anthropic_text(resp.json())
 
 
 async def generate_item(

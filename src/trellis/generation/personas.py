@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from trellis.generation.http import post_with_retry
+from trellis.generation.http import extract_anthropic_text, post_with_retry
 from trellis.settings import settings
 
 _ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
@@ -92,7 +92,7 @@ async def _generate_one(client: httpx.AsyncClient, prior: list[Persona]) -> Pers
         },
         timeout=60.0,
     )
-    text = resp.json()["content"][0]["text"]
+    text = extract_anthropic_text(resp.json())
     return _parse_persona(text)
 
 

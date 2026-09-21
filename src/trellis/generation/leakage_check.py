@@ -95,7 +95,10 @@ class InjectionCleanlinessFlag:
 
     @property
     def flag_id(self) -> str:
-        return f"{self.item_id}::{self.field}::injection"
+        # Includes `reason` so a rerun that flags the same item/field for a *different* reason
+        # is treated as a new, unreviewed entry rather than silently inheriting an old review
+        # decision that was made about a different problem.
+        return f"{self.item_id}::{self.field}::injection::{self.reason}"
 
 
 def check_injection_cleanliness(
@@ -151,11 +154,19 @@ class DistractorTellFlag:
 
     @property
     def flag_id(self) -> str:
-        return f"{self.item_id}::{self.field}::distractor_tell"
+        # See InjectionCleanlinessFlag.flag_id — `reason` is part of the id for the same reason.
+        return f"{self.item_id}::{self.field}::distractor_tell::{self.reason}"
+
+
+# Strategies whose distractors are literal other members of the same finite pool the real value
+# was drawn from (not a transformation of it) — the real value and its distractors are
+# interchangeable samples from one set, so a hedge-marker mismatch between them is expected pool
+# variety, not a generation-introduced tell. The marker checks below don't apply here.
+_POOL_SOURCED_STRATEGIES = frozenset({"swap_sibling_value", "shift_window"})
 
 
 def check_distractor_tell(
-    item_id: str, field: str, value: str, candidates: list[str]
+    item_id: str, field: str, value: str, candidates: list[str], distractor_strategy: str = ""
 ) -> DistractorTellFlag | None:
     """Flags a field's candidate set if the real value is surface-level distinguishable from
     every distractor: uniquely lacking (or uniquely carrying) a hedge/typo marker, having no
@@ -169,10 +180,11 @@ def check_distractor_tell(
     d_features = [_surface_features(d) for d in distractors]
     d_markers = [m for _, _, m in d_features]
 
-    if not value_marker and all(d_markers):
-        return DistractorTellFlag(item_id, field, value, "real_value_missing_expected_marker")
-    if value_marker and not any(d_markers):
-        return DistractorTellFlag(item_id, field, value, "real_value_uniquely_marked")
+    if distractor_strategy not in _POOL_SOURCED_STRATEGIES:
+        if not value_marker and all(d_markers):
+            return DistractorTellFlag(item_id, field, value, "real_value_missing_expected_marker")
+        if value_marker and not any(d_markers):
+            return DistractorTellFlag(item_id, field, value, "real_value_uniquely_marked")
 
     d_puncts = [p for _, p, _ in d_features]
     if value_punct == 0.0 and min(d_puncts) > 0.15:
@@ -191,6 +203,7 @@ class LeakageCheckField:
     value: str
     candidates: list[str]
     char_offset: int | None
+    distractor_strategy: str = ""
 
 
 @dataclass(frozen=True)
@@ -215,7 +228,9 @@ def run_leakage_check(
             )
             if inj is not None:
                 injection_flags.append(inj)
-            dist = check_distractor_tell(item.item_id, f.field, f.value, f.candidates)
+            dist = check_distractor_tell(
+                item.item_id, f.field, f.value, f.candidates, f.distractor_strategy
+            )
             if dist is not None:
                 distractor_flags.append(dist)
     return injection_flags, distractor_flags

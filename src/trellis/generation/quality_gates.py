@@ -39,6 +39,7 @@ class QualityGateField:
     value: str
     candidates: list[str]
     char_offset: int | None
+    distractor_strategy: str = ""
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,7 @@ def run_quality_gates(
                     value=f.value,
                     candidates=f.candidates,
                     char_offset=f.char_offset,
+                    distractor_strategy=f.distractor_strategy,
                 )
                 for f in i.fields
             ],
@@ -128,6 +130,7 @@ def _load_batch(path: Path) -> list[QualityGateItem]:
                     value=f["value"],
                     candidates=f["candidates"],
                     char_offset=f.get("char_offset"),
+                    distractor_strategy=f.get("distractor_strategy", ""),
                 )
                 for f in entry["fields"]
             ],

@@ -151,3 +151,46 @@ def test_write_distractor_review_preserves_reviewed_entry(tmp_path):
     entries_after = json.loads(path.read_text(encoding="utf-8"))
     assert len(entries_after) == 1
     assert entries_after[0]["reviewed"] is True
+
+
+def test_injection_review_does_not_carry_reviewed_forward_across_a_changed_reason(tmp_path):
+    from trellis.generation.leakage_check import InjectionCleanlinessFlag
+
+    path = tmp_path / "injection_review.json"
+    templated_flag = InjectionCleanlinessFlag(
+        "item-1", "email", "It's x@example.com.", "templated_pattern"
+    )
+    write_injection_review([templated_flag], path)
+
+    entries = json.loads(path.read_text(encoding="utf-8"))
+    entries[0]["reviewed"] = False  # a human decided this templated flag was a false positive
+    path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
+
+    # The same item/field is regenerated and now trips a *different* reason.
+    short_flag = InjectionCleanlinessFlag(
+        "item-1", "email", "x@example.com.", "short_and_formulaic"
+    )
+    write_injection_review([short_flag], path)
+
+    entries_after = json.loads(path.read_text(encoding="utf-8"))
+    assert len(entries_after) == 1
+    assert entries_after[0]["reason"] == "short_and_formulaic"
+    assert entries_after[0]["reviewed"] is None  # new problem, not silently pre-reviewed
+
+
+def test_distractor_tell_skips_marker_check_for_pool_sourced_strategies():
+    # "noon" (no hedge marker, len 4) vs. "about" (hedge marker, len 5) would trip
+    # `real_value_missing_expected_marker` for a strategy that transforms the real value — but
+    # for a pool-sourced strategy, the real value and distractor are just two ordinary members
+    # of the same finite phrase pool, so this is expected variety, not a tell. Lengths are kept
+    # close so the length-outlier check (which still applies) doesn't fire either way.
+    without_skip = check_distractor_tell(
+        "item-1", "callback_window", "noon", ["about"], distractor_strategy=""
+    )
+    assert without_skip is not None
+    assert without_skip.reason == "real_value_missing_expected_marker"
+
+    with_skip = check_distractor_tell(
+        "item-1", "callback_window", "noon", ["about"], distractor_strategy="shift_window"
+    )
+    assert with_skip is None

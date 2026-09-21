@@ -15,7 +15,7 @@ def criteria_key_to_index(key: str) -> int:
         raise ValueError(f"malformed candidate key: {key!r}")
 
     suffix = key[len(CANDIDATE_KEY_PREFIX) :]
-    if not suffix.isdigit():
+    if not suffix.isascii() or not suffix.isdigit():
         raise ValueError(f"malformed candidate key: {key!r}")
 
     return int(suffix)

@@ -26,3 +26,12 @@ class ReferenceArm(Protocol):
 
 
 ARMS: dict[str, ReferenceArm] = {}
+
+
+def register_arm(arm: ReferenceArm) -> None:
+    """Registers `arm` into `ARMS` under `arm.name`. Raises `ValueError` if that name is
+    already registered, so two arms colliding on a name fail loudly instead of one silently
+    overwriting the other."""
+    if arm.name in ARMS:
+        raise ValueError(f"a reference arm named {arm.name!r} is already registered")
+    ARMS[arm.name] = arm

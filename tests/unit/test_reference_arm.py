@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from trellis.reference.base import ARMS, ArmAnswer
+from trellis.reference.base import ARMS, ArmAnswer, register_arm
 from trellis.reference.wire import candidates_to_criteria, criteria_key_to_index
 from trellis.schema.types import FieldSpec
 
@@ -31,8 +31,27 @@ def test_criteria_round_trip_preserves_index(size: int) -> None:
         assert criteria_key_to_index(key) == original_index
 
 
+def test_criteria_round_trip_empty_candidate_list() -> None:
+    assert candidates_to_criteria([]) == {}
+
+
+def test_criteria_round_trip_single_candidate() -> None:
+    criteria = candidates_to_criteria(["only option"])
+    assert criteria == {"candidate_0": "only option"}
+    assert criteria_key_to_index("candidate_0") == 0
+
+
 @pytest.mark.parametrize(
-    "bad_key", ["", "candidate_", "candidate_x", "candidateX0", "0_candidate", "candidate_-1"]
+    "bad_key",
+    [
+        "",
+        "candidate_",
+        "candidate_x",
+        "candidateX0",
+        "0_candidate",
+        "candidate_-1",
+        "candidate_²",
+    ],
 )
 def test_malformed_key_raises_value_error(bad_key: str) -> None:
     with pytest.raises(ValueError):
@@ -94,3 +113,16 @@ async def test_adding_a_second_arm_requires_no_base_changes(registered_arms) -> 
             assert isinstance(await arm.answer("t", FIELD, None), dict)
     finally:
         registered_arms.pop("dummy_two", None)
+
+
+def test_register_arm_adds_to_registry(registered_arms) -> None:
+    register_arm(SecondDummyArm())
+    try:
+        assert registered_arms["dummy_two"].name == "dummy_two"
+    finally:
+        registered_arms.pop("dummy_two", None)
+
+
+def test_register_arm_rejects_duplicate_name(registered_arms) -> None:
+    with pytest.raises(ValueError):
+        register_arm(DummyArm())

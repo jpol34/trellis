@@ -88,9 +88,9 @@ class SecondDummyArm:
 @pytest.fixture
 def registered_arms():
     # Snapshots and clears the real registry rather than adding onto it — concrete arm modules
-    # (e.g. gpt-5.1) register themselves into this same process-global `ARMS` as soon as they're
-    # imported anywhere in the test session, and this fixture's tests assume they're the only
-    # entries, including calling `answer()` on every entry with no HTTP mocking in place.
+    # (e.g. gpt-5.1, jev) register themselves into this same process-global `ARMS` as soon as
+    # they're imported anywhere in the test session, and this fixture's tests assume they're
+    # the only entries, including calling `answer()` on every entry with no HTTP mocking in place.
     previous = dict(ARMS)
     ARMS.clear()
     ARMS["dummy"] = DummyArm()

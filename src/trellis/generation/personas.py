@@ -88,11 +88,10 @@ async def _generate_one(client: httpx.AsyncClient, prior: list[Persona]) -> Pers
         },
         json={
             "model": settings.generation_claude_model,
-            # Generous relative to the actual JSON payload: this model has been observed to
-            # spontaneously return a `thinking` content block before the visible text even
-            # without a thinking parameter being set (see extract_anthropic_text), and a persona
-            # whose free-text fields ran long enough to hit a small budget was silently
-            # truncated into invalid JSON rather than erroring clearly.
+            # Generous relative to the actual JSON payload: this model can emit a `thinking`
+            # content block before the visible text even without a thinking parameter set (see
+            # extract_anthropic_text), so a small budget silently truncates a persona whose
+            # free-text fields run long into invalid JSON instead of erroring clearly.
             "max_tokens": 1024,
             "messages": [{"role": "user", "content": _persona_prompt(prior)}],
         },

@@ -250,7 +250,7 @@ async def test_generate_records_does_not_inflate_past_total_with_stale_checkpoin
         checkpoint_path=checkpoint_path,
     )
     # Simulate the crash-before-cleanup window: a pilot run's checkpoint is left on disk, then a
-    # later full run reuses the same out_dir/checkpoint path with a different total.
+    # later full run reuses the same out_dir/checkpoint path with a different (larger) total.
     records = await generate_records(
         [PROSPECT],
         100,
@@ -264,11 +264,52 @@ async def test_generate_records_does_not_inflate_past_total_with_stale_checkpoin
     assert len({r["item_id"] for r in records}) == 100
 
 
+async def test_generate_records_does_not_inflate_past_a_smaller_total_with_stale_checkpoint(
+    tmp_path,
+):
+    # The over-inclusion bug only manifested when a later run's total is *smaller* than what's
+    # already on disk in the checkpoint (a larger stale checkpoint unconditionally seeded the
+    # result before any per-item filtering happened) — a larger-total resume degenerates to the
+    # same count either way and doesn't exercise the bug, so it's covered separately above.
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    await generate_records(
+        [PROSPECT],
+        100,
+        generate_fn=_fake_generate_fn,
+        rng=random.Random(0),
+        id_prefix="eval",
+        allocate_cells=allocate_cells_by_tier,
+        checkpoint_path=checkpoint_path,
+    )
+    records = await generate_records(
+        [PROSPECT],
+        20,
+        generate_fn=_fake_generate_fn,
+        rng=random.Random(0),
+        id_prefix="eval",
+        allocate_cells=allocate_cells_by_tier,
+        checkpoint_path=checkpoint_path,
+    )
+    assert len(records) == 20
+    assert len({r["item_id"] for r in records}) == 20
+
+
 def test_load_checkpoint_skips_a_truncated_trailing_line(tmp_path):
     checkpoint_path = tmp_path / "checkpoint.jsonl"
     good_record = _record("prospect", "new_inquiry", "clean", 0)
     checkpoint_path.write_text(
         json.dumps(good_record) + "\n" + '{"item_id": "prospect-new_inquiry-clean-1", "transcr',
+        encoding="utf-8",
+    )
+    loaded = _load_checkpoint(checkpoint_path)
+    assert list(loaded) == [good_record["item_id"]]
+
+
+def test_load_checkpoint_skips_valid_json_missing_item_id(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    good_record = _record("prospect", "new_inquiry", "clean", 0)
+    checkpoint_path.write_text(
+        json.dumps(good_record) + "\n" + json.dumps({"foo": "bar"}) + "\n",
         encoding="utf-8",
     )
     loaded = _load_checkpoint(checkpoint_path)

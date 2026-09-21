@@ -137,12 +137,13 @@ def _load_checkpoint(checkpoint_path: Path) -> dict[str, dict]:
             continue
         try:
             record = json.loads(line)
-        except json.JSONDecodeError:
-            # A process killed mid-write (SIGKILL, OOM, power loss) can leave a truncated last
-            # line. Treat it as never-committed rather than failing the whole resume — the item
-            # it would have been simply gets regenerated.
+            item_id = record["item_id"]
+        except (json.JSONDecodeError, KeyError):
+            # A process killed mid-write (SIGKILL, OOM, power loss) can leave a truncated or
+            # otherwise malformed last line. Treat it as never-committed rather than failing the
+            # whole resume — the item it would have been simply gets regenerated.
             continue
-        records[record["item_id"]] = record
+        records[item_id] = record
     return records
 
 

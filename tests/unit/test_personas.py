@@ -100,3 +100,28 @@ async def test_generate_personas_zero_returns_empty_list_and_makes_no_calls():
 
     assert result == []
     assert calls["n"] == 0
+
+
+async def test_generate_one_requests_a_token_budget_that_wont_truncate_a_verbose_persona():
+    # Regression: a small max_tokens truncated a verbose persona's JSON mid-string (real API
+    # call cut off before the closing brace), raising an unhandled parse error and losing an
+    # entire batch's progress in a run with no checkpointing. Budget must be generous relative
+    # to the actual field lengths this prompt allows.
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["max_tokens"] = json.loads(request.content)["max_tokens"]
+        return _anthropic_response(
+            {
+                "age_range": "45-54",
+                "tone": "polite but visibly frustrated",
+                "verbosity": "moderate",
+                "background": "long-term tenant",
+                "speech_quirks": "uses filler phrases",
+            }
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        await generate_personas(1, client)
+
+    assert seen["max_tokens"] >= 1024

@@ -37,7 +37,8 @@ def _persona_prompt(prior: list[Persona]) -> str:
         "separately.",
         "",
         "Respond strictly as JSON with keys: age_range, tone, verbosity, background, "
-        "speech_quirks — no other text.",
+        "speech_quirks — no other text. Keep each value to a short phrase or one sentence at "
+        "most, not a paragraph.",
     ]
     if prior:
         lines += [
@@ -87,7 +88,11 @@ async def _generate_one(client: httpx.AsyncClient, prior: list[Persona]) -> Pers
         },
         json={
             "model": settings.generation_claude_model,
-            "max_tokens": 256,
+            # Generous relative to the actual JSON payload: some models prepend a `thinking`
+            # block before the visible text (see extract_anthropic_text), and a persona whose
+            # free-text fields ran long enough to hit a small budget would be silently truncated
+            # into invalid JSON rather than erroring clearly.
+            "max_tokens": 1024,
             "messages": [{"role": "user", "content": _persona_prompt(prior)}],
         },
         timeout=60.0,

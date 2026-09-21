@@ -147,6 +147,96 @@ async def test_generate_records_produces_exactly_total_items():
     assert len({r["item_id"] for r in records}) == 60
 
 
+async def test_generate_records_writes_checkpoint_incrementally(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    records = await generate_records(
+        [PROSPECT],
+        5,
+        generate_fn=_fake_generate_fn,
+        rng=random.Random(0),
+        id_prefix="t",
+        checkpoint_path=checkpoint_path,
+    )
+    assert len(records) == 5
+    checkpoint_lines = checkpoint_path.read_text(encoding="utf-8").splitlines()
+    assert len(checkpoint_lines) == 5
+    assert {json.loads(line)["item_id"] for line in checkpoint_lines} == {
+        r["item_id"] for r in records
+    }
+
+
+async def test_generate_records_resumes_from_checkpoint_without_regenerating(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    calls = {"n": 0}
+
+    async def counting_generate_fn(category, call_reason, variability_tier) -> dict:
+        calls["n"] += 1
+        return _generated(call_reason)
+
+    first_pass = await generate_records(
+        [PROSPECT],
+        5,
+        generate_fn=counting_generate_fn,
+        rng=random.Random(0),
+        id_prefix="t",
+        checkpoint_path=checkpoint_path,
+    )
+    assert calls["n"] == 5
+
+    second_pass = await generate_records(
+        [PROSPECT],
+        5,
+        generate_fn=counting_generate_fn,
+        rng=random.Random(0),
+        id_prefix="t",
+        checkpoint_path=checkpoint_path,
+    )
+    # Same seed/total/id_prefix regenerates the identical set of item_ids, all already
+    # checkpointed, so the (billed) generate_fn must not be called again.
+    assert calls["n"] == 5
+    assert {r["item_id"] for r in second_pass} == {r["item_id"] for r in first_pass}
+
+
+async def test_generate_records_resumes_partial_checkpoint(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    calls = {"n": 0}
+
+    async def failing_generate_fn(category, call_reason, variability_tier) -> dict:
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise RuntimeError("simulated mid-run failure")
+        return _generated(call_reason)
+
+    with pytest.raises(RuntimeError):
+        await generate_records(
+            [PROSPECT],
+            5,
+            generate_fn=failing_generate_fn,
+            rng=random.Random(0),
+            id_prefix="t",
+            checkpoint_path=checkpoint_path,
+        )
+    assert len(checkpoint_path.read_text(encoding="utf-8").splitlines()) == 2
+
+    calls["n"] = 0
+
+    async def succeeding_generate_fn(category, call_reason, variability_tier) -> dict:
+        calls["n"] += 1
+        return _generated(call_reason)
+
+    records = await generate_records(
+        [PROSPECT],
+        5,
+        generate_fn=succeeding_generate_fn,
+        rng=random.Random(0),
+        id_prefix="t",
+        checkpoint_path=checkpoint_path,
+    )
+    assert len(records) == 5
+    # The 2 already-checkpointed items aren't regenerated on resume.
+    assert calls["n"] == 3
+
+
 async def test_generate_records_only_uses_known_cells():
     records = await generate_records(
         [PROSPECT], 15, generate_fn=_fake_generate_fn, rng=random.Random(0), id_prefix="t"

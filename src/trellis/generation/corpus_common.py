@@ -127,6 +127,18 @@ def record_to_quality_gate_item(record: dict) -> QualityGateItem:
     )
 
 
+def _load_checkpoint(checkpoint_path: Path) -> dict[str, dict]:
+    if not checkpoint_path.exists():
+        return {}
+    records: dict[str, dict] = {}
+    for line in checkpoint_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            record = json.loads(line)
+            records[record["item_id"]] = record
+    return records
+
+
 async def generate_records(
     categories: Sequence[CategorySpec],
     total: int,
@@ -135,26 +147,40 @@ async def generate_records(
     rng: random.Random,
     id_prefix: str,
     allocate_cells: AllocateCellsFn = allocate_cells_flat,
+    checkpoint_path: Path | None = None,
 ) -> list[dict]:
     """Allocates `total` across `categories` (evenly, seeded), then across each category's
-    scenario cells via `allocate_cells`, calling `generate_fn` once per generated item."""
+    scenario cells via `allocate_cells`, calling `generate_fn` once per generated item.
+
+    A real generation run is many sequential, billed API calls; without `checkpoint_path`, any
+    single failure partway through (a parse error, a network blip, exhausted retries) loses every
+    item generated so far, since nothing is persisted until the whole run finishes. When given,
+    each successfully generated record is appended to `checkpoint_path` immediately, and a
+    checkpoint already on disk from a prior interrupted run is loaded first so already-generated
+    items are skipped rather than regenerated (and re-billed)."""
+    already_generated = _load_checkpoint(checkpoint_path) if checkpoint_path else {}
     per_category_total = allocate_counts([c.category for c in categories], total, rng)
-    records: list[dict] = []
+    records: list[dict] = list(already_generated.values())
     for category in categories:
         cell_counts = allocate_cells(category, per_category_total[category.category], rng)
         for (call_reason, tier), count in cell_counts.items():
             for i in range(count):
                 item_id = f"{id_prefix}-{category.category}-{call_reason}-{tier}-{i}"
+                if item_id in already_generated:
+                    continue
                 generated = await generate_fn(category, call_reason, tier)
-                records.append(
-                    build_record(
-                        item_id=item_id,
-                        category=category,
-                        call_reason=call_reason,
-                        variability_tier=tier,
-                        generated=generated,
-                    )
+                record = build_record(
+                    item_id=item_id,
+                    category=category,
+                    call_reason=call_reason,
+                    variability_tier=tier,
+                    generated=generated,
                 )
+                records.append(record)
+                if checkpoint_path:
+                    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+                    with checkpoint_path.open("a", encoding="utf-8") as f:
+                        f.write(json.dumps(record) + "\n")
     return records
 
 

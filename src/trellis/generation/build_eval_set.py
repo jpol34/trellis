@@ -43,6 +43,7 @@ async def build_eval_set(
     sample_seed: int = SAMPLE_SEED,
 ) -> int:
     categories = load_all_categories()
+    checkpoint_path = out_dir / "checkpoint.jsonl"
     records = await generate_records(
         categories,
         total,
@@ -50,6 +51,7 @@ async def build_eval_set(
         rng=random.Random(sample_seed),
         id_prefix="eval",
         allocate_cells=allocate_cells_by_tier,
+        checkpoint_path=checkpoint_path,
     )
 
     run_quality_gates(
@@ -59,7 +61,9 @@ async def build_eval_set(
         distractor_review_path=out_dir / "distractor_review.json",
     )
 
-    return write_jsonl(out_dir / "eval.jsonl", records)
+    n = write_jsonl(out_dir / "eval.jsonl", records)
+    checkpoint_path.unlink(missing_ok=True)
+    return n
 
 
 def main() -> None:

@@ -44,6 +44,7 @@ async def build_training_corpus(
     split_seed: int = SPLIT_SEED,
 ) -> dict[str, int]:
     categories = load_all_categories()
+    checkpoint_path = out_dir / "checkpoint.jsonl"
     records = await generate_records(
         categories,
         total,
@@ -51,6 +52,7 @@ async def build_training_corpus(
         rng=random.Random(sample_seed),
         id_prefix="train",
         allocate_cells=allocate_cells_flat,
+        checkpoint_path=checkpoint_path,
     )
 
     run_quality_gates(
@@ -61,13 +63,15 @@ async def build_training_corpus(
     )
 
     train, val, held_out = stratified_split(records, split_seed)
-    return {
+    counts = {
         "train": write_jsonl(out_dir / "train" / "records.jsonl", train),
         "val": write_jsonl(out_dir / "val" / "records.jsonl", val),
         "held_out_internal": write_jsonl(
             out_dir / "held_out_internal" / "records.jsonl", held_out
         ),
     }
+    checkpoint_path.unlink(missing_ok=True)
+    return counts
 
 
 def main() -> None:

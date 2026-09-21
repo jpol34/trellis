@@ -48,11 +48,17 @@ def _build_prompt(transcript: str, field: FieldSpec) -> str:
 
 def _parse_response(text: str) -> ArmAnswer:
     """Extracts the evidence-first JSON answer from a model's response, tolerating surrounding
-    prose/markdown fences — models don't reliably return bare JSON despite instructions to."""
-    start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end == -1 or end < start:
+    prose/markdown fences — models don't reliably return bare JSON despite instructions to.
+    Uses raw_decode from the first '{' rather than find('{')/rfind('}'), so trailing prose that
+    itself contains a brace pair (e.g. "let me know if you need {more} info") can't extend the
+    parsed slice past the real JSON object."""
+    start = text.find("{")
+    if start == -1:
         raise ValueError(f"no JSON object found in response: {text!r}")
-    parsed: dict[str, Any] = json.loads(text[start : end + 1])
+    try:
+        parsed: dict[str, Any] = json.JSONDecoder().raw_decode(text, start)[0]
+    except json.JSONDecodeError as e:
+        raise ValueError(f"no valid JSON object found in response: {text!r}") from e
 
     status = parsed.get("status")
     if status == _INSUFFICIENT_EVIDENCE:
@@ -80,24 +86,29 @@ def _parse_response(text: str) -> ArmAnswer:
 class GPT51Arm:
     name = "gpt-5.1"
 
+    def __init__(self, client: httpx.AsyncClient | None = None) -> None:
+        # A benchmark run calls `answer()` once per transcript across a whole dataset — a
+        # shared client lets httpx pool connections across the run instead of paying a fresh
+        # TLS handshake per call.
+        self._client = client or httpx.AsyncClient()
+
     async def answer(
         self, transcript: str, field: FieldSpec, candidates: list[str] | None
     ) -> ArmAnswer:
-        async with httpx.AsyncClient() as client:
-            resp = await post_with_retry(
-                client,
-                _OPENAI_URL,
-                headers={
-                    "Authorization": f"Bearer {settings.openai_api_key}",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": settings.reference_gpt_model,
-                    "messages": [{"role": "user", "content": _build_prompt(transcript, field)}],
-                    "response_format": {"type": "json_object"},
-                },
-                timeout=60.0,
-            )
+        resp = await post_with_retry(
+            self._client,
+            _OPENAI_URL,
+            headers={
+                "Authorization": f"Bearer {settings.openai_api_key}",
+                "content-type": "application/json",
+            },
+            json={
+                "model": settings.reference_gpt_model,
+                "messages": [{"role": "user", "content": _build_prompt(transcript, field)}],
+                "response_format": {"type": "json_object"},
+            },
+            timeout=60.0,
+        )
         text = resp.json()["choices"][0]["message"]["content"]
         return _parse_response(text)
 

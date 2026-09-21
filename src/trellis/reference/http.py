@@ -1,11 +1,7 @@
 """Retry-with-backoff HTTP POST helper for reference-arm API calls.
 
-Vendored from laya-bench's `eval/labeling.py::_post_with_retry` (see
-`trellis-wt-12`/ticket #12) rather than imported cross-repo — trellis and laya-bench are
-separate deployable projects. If ticket #5's `generation/http.py::post_with_retry` lands with
-the same shape, the orchestrator will de-duplicate the two copies; this one is scoped to
-`reference/` only.
-"""
+Vendored from laya-bench's `eval/labeling.py::_post_with_retry` rather than imported
+cross-repo — trellis and laya-bench are separate deployable projects."""
 
 from __future__ import annotations
 

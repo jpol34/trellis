@@ -46,12 +46,22 @@ def canonical_list_match(predicted: str, gold: str, value_pool: list[str]) -> bo
 
 
 _CURRENCY_STRIP = re.compile(r"[$,\s]")
+_PARENTHESIZED_NEGATIVE = re.compile(r"^\((.+)\)$")
+
+
+def _parse_amount(value: str) -> float:
+    stripped = _CURRENCY_STRIP.sub("", value.strip())
+    # Accounting notation writes a negative amount as "(500)" rather than "-500".
+    match = _PARENTHESIZED_NEGATIVE.match(stripped)
+    if match:
+        stripped = f"-{match.group(1)}"
+    return float(stripped)
 
 
 def numeric_tolerance_match(predicted: str, gold: str, tolerance: float) -> bool:
     try:
-        predicted_num = float(_CURRENCY_STRIP.sub("", predicted))
-        gold_num = float(_CURRENCY_STRIP.sub("", gold))
+        predicted_num = _parse_amount(predicted)
+        gold_num = _parse_amount(gold)
     except ValueError:
         return False
     return abs(predicted_num - gold_num) <= tolerance

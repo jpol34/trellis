@@ -166,6 +166,11 @@ def test_numeric_correctly_absent() -> None:
     assert _open_state(False, True, None) == "correctly_absent"
 
 
+def test_numeric_matches_accounting_style_parenthesized_negative() -> None:
+    assert numeric_tolerance_match("($500.00)", "-500", tolerance=0.5) is True
+    assert numeric_tolerance_match("($500.00)", "500", tolerance=0.5) is False
+
+
 # --- date (lease_renewal_date) ---
 
 

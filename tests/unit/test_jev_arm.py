@@ -118,3 +118,28 @@ async def test_criteria_sent_matches_candidate_order(_patched_transport):
 async def test_answer_raises_when_candidates_is_none():
     with pytest.raises(ValueError):
         await ARMS["jev"].answer("transcript", FIELD, None)
+
+
+async def test_answer_raises_clear_error_when_answer_missing(_patched_transport):
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            json={
+                "model": "jev-1",
+                "answers": {},
+                "usage": {"input_tokens": 5, "output_tokens": 0},
+            },
+        )
+
+    _patched_transport(httpx2.MockTransport(handler))
+
+    with pytest.raises(ValueError, match=QUESTION_NAME):
+        await ARMS["jev"].answer("transcript", FIELD, ["billing", "technical"])
+
+
+async def test_answer_raises_clear_error_when_chosen_index_out_of_range(_patched_transport):
+    handler, transport = _mock_response("candidate_7", 0.9, {"candidate_7": 0.9})
+    _patched_transport(transport)
+
+    with pytest.raises(ValueError, match="out of range"):
+        await ARMS["jev"].answer("transcript", FIELD, ["billing", "technical"])

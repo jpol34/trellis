@@ -41,8 +41,20 @@ class JevArm:
                 },
             )
 
-        answer = response.choices[QUESTION_NAME]
+        try:
+            answer = response.choices[QUESTION_NAME]
+        except KeyError as e:
+            raise ValueError(
+                f"jev response is missing the {QUESTION_NAME!r} answer: {response.choices!r}"
+            ) from e
+
         chosen_index = criteria_key_to_index(answer.choice)
+        if not 0 <= chosen_index < len(candidates):
+            raise ValueError(
+                f"jev returned candidate index {chosen_index} out of range for "
+                f"{len(candidates)} candidates: {answer.choice!r}"
+            )
+
         return ArmAnswer(
             value=candidates[chosen_index],
             chosen_index=chosen_index,

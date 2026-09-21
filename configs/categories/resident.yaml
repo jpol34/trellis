@@ -1,0 +1,49 @@
+category: resident
+
+fields:
+  - name: name
+    match_type: fuzzy
+    required: true
+    distractor_strategy: swap_similar_name
+  - name: phone
+    match_type: normalized_phone
+    required: true
+    distractor_strategy: perturb_digit
+  - name: email
+    match_type: exact
+    required: true
+    distractor_strategy: swap_domain
+  - name: unit_number
+    match_type: exact
+    required: true
+    distractor_strategy: swap_adjacent_unit
+  - name: issue_type
+    match_type: canonical_list
+    required: true
+    distractor_strategy: swap_sibling_value
+    value_pool: issue_types
+  - name: issue_severity
+    match_type: canonical_list
+    required: true
+    distractor_strategy: swap_sibling_value
+    value_pool: severities
+  - name: callback_window
+    match_type: fuzzy
+    required: false
+    distractor_strategy: shift_window
+  - name: lease_renewal_date
+    match_type: date
+    required: false
+    distractor_strategy: shift_date
+  - name: balance_owed
+    match_type: numeric_tolerance
+    required: false
+    distractor_strategy: perturb_amount
+
+scenarios:
+  call_reasons:
+    - maintenance_emergency
+    - maintenance_routine
+    - rent_balance
+    - lease_renewal
+    - noise_hoa

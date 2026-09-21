@@ -1,0 +1,24 @@
+clean:
+  linguistic: []
+  conversational: []
+
+natural:
+  linguistic:
+    - paraphrase
+    - simplification
+  conversational:
+    - disfluency
+    - turn_spread_disclosure
+
+noisy:
+  linguistic:
+    - typos
+    - speech_asr_errors
+    - paraphrase
+    - simplification
+    - verbosity
+  conversational:
+    - disfluency
+    - interruption
+    - self_correction
+    - turn_spread_disclosure

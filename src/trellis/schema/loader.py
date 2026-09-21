@@ -23,17 +23,24 @@ class SchemaError(ValueError):
     """A category or value-pool config failed validation."""
 
 
+def _load_yaml(path: Path) -> object:
+    try:
+        return yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as e:
+        raise SchemaError(f"{path}: invalid YAML\n{e}") from e
+
+
 def _load_value_pool_names(value_pools_dir: Path) -> set[str]:
     names = set()
     for path in value_pools_dir.glob("*.yaml"):
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        raw = _load_yaml(path)
         if raw:
             names.add(path.stem)
     return names
 
 
 def load_category(path: Path, value_pools_dir: Path = VALUE_POOLS_DIR) -> CategorySpec:
-    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    raw = _load_yaml(path)
     if raw is None:
         raise SchemaError(f"{path}: file is empty")
 
@@ -44,18 +51,17 @@ def load_category(path: Path, value_pools_dir: Path = VALUE_POOLS_DIR) -> Catego
 
     available_pools = _load_value_pool_names(value_pools_dir)
     for field in spec.fields:
-        if field.match_type == "canonical_list":
-            if not field.value_pool:
-                raise SchemaError(
-                    f"{path}: field {field.name!r} has match_type 'canonical_list' but no "
-                    "value_pool reference"
-                )
-            if field.value_pool not in available_pools:
-                raise SchemaError(
-                    f"{path}: field {field.name!r} references value_pool "
-                    f"{field.value_pool!r}, which does not resolve to a real, non-empty "
-                    f"file under {value_pools_dir}"
-                )
+        if field.match_type == "canonical_list" and not field.value_pool:
+            raise SchemaError(
+                f"{path}: field {field.name!r} has match_type 'canonical_list' but no "
+                "value_pool reference"
+            )
+        if field.value_pool and field.value_pool not in available_pools:
+            raise SchemaError(
+                f"{path}: field {field.name!r} references value_pool "
+                f"{field.value_pool!r}, which does not resolve to a real, non-empty "
+                f"file under {value_pools_dir}"
+            )
 
     return spec
 

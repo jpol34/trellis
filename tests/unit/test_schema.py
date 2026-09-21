@@ -156,3 +156,32 @@ def test_canonical_list_field_without_value_pool_raises_schema_error(tmp_path: P
 
     with pytest.raises(SchemaError):
         load_category(path, value_pools_dir=VALUE_POOLS_DIR)
+
+
+def test_malformed_yaml_raises_schema_error_not_yaml_error(tmp_path: Path) -> None:
+    path = tmp_path / "broken.yaml"
+    path.write_text("category: broken\nfields: [unclosed")
+
+    with pytest.raises(SchemaError):
+        load_category(path)
+
+
+def test_dangling_value_pool_on_mistyped_match_type_raises_schema_error(tmp_path: Path) -> None:
+    bad_yaml = {
+        "category": "broken",
+        "fields": [
+            {
+                "name": "issue_type",
+                "match_type": "fuzzy",
+                "required": True,
+                "distractor_strategy": "swap_sibling_value",
+                "value_pool": "does_not_exist",
+            }
+        ],
+        "scenarios": {"call_reasons": ["some_reason"]},
+    }
+    path = tmp_path / "broken.yaml"
+    path.write_text(yaml.safe_dump(bad_yaml))
+
+    with pytest.raises(SchemaError):
+        load_category(path, value_pools_dir=VALUE_POOLS_DIR)

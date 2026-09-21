@@ -37,6 +37,7 @@ def _create_pod() -> str:
         disk_gb=settings.runpod_disk_gb,
         ports=["22/tcp"],
         env=_pod_env(),
+        registry_id=settings.runpod_registry_id,
     )
     pod_id = result["id"]
     # RUNPOD_POD_ID can't be known until the pod exists, so it's set after creation and the pod

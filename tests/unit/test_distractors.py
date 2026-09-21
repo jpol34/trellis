@@ -75,6 +75,17 @@ def test_perturb_amount_is_numeric_and_near_real_value():
         assert abs(int(d) - int(real)) <= int(real) * 0.5 + 1
 
 
+def test_perturb_amount_handles_zero_base_value():
+    field = _field(RESIDENT, "balance_owed")
+    rng, faker = _rng_faker(6)
+    real = "0"
+    distractors = generate_distractors(real, field, faker, rng)
+    assert len(distractors) == 3
+    for d in distractors:
+        assert d.isdigit()
+        assert d != real
+
+
 def test_shift_date_is_iso_date_near_real_value():
     field = _field(PROSPECT, "move_in_date")
     rng, faker = _rng_faker(5)

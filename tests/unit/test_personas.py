@@ -4,7 +4,7 @@ import json
 
 import httpx
 
-from trellis.generation.personas import Persona, generate_personas
+from trellis.generation.personas import Persona, _parse_persona, generate_personas
 
 
 def _anthropic_response(persona: dict) -> httpx.Response:
@@ -35,6 +35,21 @@ async def test_generate_personas_returns_requested_count():
     assert len(result) == 3
     assert all(isinstance(p, Persona) for p in result)
     assert calls["n"] == 3
+
+
+def test_parse_persona_tolerates_brace_in_field_value_and_trailing_prose():
+    persona = {
+        "age_range": "30-40",
+        "tone": "friendly",
+        "verbosity": "concise",
+        "background": "works as a {full-stack} engineer",
+        "speech_quirks": "none",
+    }
+    text = f"Here you go:\n{json.dumps(persona)}\nLet me know if you need {{more}} info."
+
+    result = _parse_persona(text)
+
+    assert result.background == "works as a {full-stack} engineer"
 
 
 async def test_generate_personas_is_sequential_and_each_prompt_lists_prior_personas():

@@ -56,11 +56,17 @@ def _persona_prompt(prior: list[Persona]) -> str:
 
 def _parse_persona(text: str) -> Persona:
     """Extracts the persona JSON object from a model response, tolerating surrounding
-    prose/markdown fences — models don't reliably return bare JSON despite instructions to."""
-    start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end == -1 or end < start:
+    prose/markdown fences — models don't reliably return bare JSON despite instructions to.
+    Uses raw_decode from the first '{' rather than find('{')/rfind('}'), since a brace inside a
+    free-text field value (or trailing prose after the object) would make rfind('}') pick the
+    wrong end index."""
+    start = text.find("{")
+    if start == -1:
         raise ValueError(f"no JSON object found in persona response: {text!r}")
-    data = json.loads(text[start : end + 1])
+    try:
+        data = json.JSONDecoder().raw_decode(text, start)[0]
+    except json.JSONDecodeError as e:
+        raise ValueError(f"no valid JSON object found in persona response: {text!r}") from e
     return Persona(
         age_range=data["age_range"],
         tone=data["tone"],

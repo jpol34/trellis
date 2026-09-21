@@ -75,12 +75,20 @@ def _swap_domain(value: str, field: FieldSpec, faker: Faker, rng: random.Random)
 def _perturb_amount(value: str, field: FieldSpec, faker: Faker, rng: random.Random) -> list[str]:
     base = float(value)
     low, high = numeric_range(field)
+    # A purely multiplicative delta (base * fraction) is always 0 when base is 0, which is a
+    # normal, reachable value for fields like balance_owed. Floor the delta's magnitude to a
+    # fraction of the field's range so a zero (or near-zero) base still perturbs.
+    min_delta = max(1.0, (high - low) * 0.02)
     out: list[str] = []
     seen = {value}
     attempts = 0
     while len(out) < 3 and attempts < 100:
         attempts += 1
-        delta = base * rng.uniform(0.1, 0.4) * rng.choice([-1, 1])
+        # min_delta alone would be a constant magnitude when base is 0, collapsing every attempt
+        # to the same +/-min_delta candidate pair — vary it per attempt so distinct candidates
+        # are actually reachable.
+        magnitude = max(abs(base) * rng.uniform(0.1, 0.4), min_delta * rng.uniform(0.5, 2.0))
+        delta = magnitude * rng.choice([-1, 1])
         candidate_val = min(max(round(base + delta), low), high)
         candidate = str(int(candidate_val))
         if candidate not in seen:

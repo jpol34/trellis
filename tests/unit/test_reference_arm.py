@@ -87,11 +87,17 @@ class SecondDummyArm:
 
 @pytest.fixture
 def registered_arms():
+    # Isolated from whatever real arms other test modules registered into the process-wide
+    # `ARMS` (arm modules register themselves at import time) so these tests only see the
+    # dummy arms they set up themselves.
+    original = dict(ARMS)
+    ARMS.clear()
     ARMS["dummy"] = DummyArm()
     try:
         yield ARMS
     finally:
-        ARMS.pop("dummy", None)
+        ARMS.clear()
+        ARMS.update(original)
 
 
 async def test_registered_arm_is_discovered_and_callable(registered_arms) -> None:

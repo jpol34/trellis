@@ -41,6 +41,7 @@ trellis-pod-down = "trellis.pod.stop_pod:main"
 trellis-pod-status = "trellis.pod.status:main"
 trellis-gen-training = "trellis.generation.build_training_corpus:main"
 trellis-gen-eval = "trellis.generation.build_eval_set:main"
+trellis-quality-gates = "trellis.generation.quality_gates:main"
 trellis-finetune = "trellis.finetune.train:main"
 trellis-eval = "trellis.validate.run_eval:main"
 

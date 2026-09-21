@@ -1,0 +1,25 @@
+# CUDA-enabled base image so `pip install -e .[train]` reuses the base's torch-cuda build
+# instead of pulling the CPU-only wheel from PyPI. Pinned to torch>=2.5 — `transformers`
+# disables its PyTorch backend entirely (not just a warning) below that version.
+FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssh-server curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY pyproject.toml README.md ./
+COPY src/ src/
+RUN pip install --no-cache-dir -e ".[train]"
+
+# Fail the build, not a silent CPU fallback in production, if the train extra's torch>=2.5 pin
+# somehow resolved a fresh (CPU-only) wheel instead of reusing the base image's CUDA build.
+RUN python -c "import torch; assert torch.version.cuda is not None, 'torch has no CUDA build'"
+
+COPY stack/ stack/
+
+ENV TRELLIS_DEVICE=cuda
+ENV PYTHONUNBUFFERED=1
+
+ENTRYPOINT ["bash", "stack/entrypoint.sh"]

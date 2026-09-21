@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     runpod_image: str = ""
     runpod_gpu_type_id: str = "NVIDIA GeForce RTX 4090"
     runpod_disk_gb: int = 20
+    runpod_registry_id: str = ""
 
     # LLM providers used for synthetic transcript generation and as reference benchmarks
     anthropic_api_key: str = ""

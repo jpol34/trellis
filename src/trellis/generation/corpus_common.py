@@ -133,9 +133,16 @@ def _load_checkpoint(checkpoint_path: Path) -> dict[str, dict]:
     records: dict[str, dict] = {}
     for line in checkpoint_path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
-        if line:
+        if not line:
+            continue
+        try:
             record = json.loads(line)
-            records[record["item_id"]] = record
+        except json.JSONDecodeError:
+            # A process killed mid-write (SIGKILL, OOM, power loss) can leave a truncated last
+            # line. Treat it as never-committed rather than failing the whole resume — the item
+            # it would have been simply gets regenerated.
+            continue
+        records[record["item_id"]] = record
     return records
 
 
@@ -157,30 +164,41 @@ async def generate_records(
     item generated so far, since nothing is persisted until the whole run finishes. When given,
     each successfully generated record is appended to `checkpoint_path` immediately, and a
     checkpoint already on disk from a prior interrupted run is loaded first so already-generated
-    items are skipped rather than regenerated (and re-billed)."""
-    already_generated = _load_checkpoint(checkpoint_path) if checkpoint_path else {}
+    items are skipped rather than regenerated (and re-billed). Only checkpoint entries whose
+    item_id is actually part of *this* call's allocation are reused — a stale checkpoint left
+    over from a run with a different `total` (e.g. a `--pilot N` run sharing the same out_dir as
+    a later full run) must not inflate the result past `total` or leak mismatched items in."""
+    on_disk_checkpoint = _load_checkpoint(checkpoint_path) if checkpoint_path else {}
     per_category_total = allocate_counts([c.category for c in categories], total, rng)
-    records: list[dict] = list(already_generated.values())
-    for category in categories:
-        cell_counts = allocate_cells(category, per_category_total[category.category], rng)
-        for (call_reason, tier), count in cell_counts.items():
-            for i in range(count):
-                item_id = f"{id_prefix}-{category.category}-{call_reason}-{tier}-{i}"
-                if item_id in already_generated:
-                    continue
-                generated = await generate_fn(category, call_reason, tier)
-                record = build_record(
-                    item_id=item_id,
-                    category=category,
-                    call_reason=call_reason,
-                    variability_tier=tier,
-                    generated=generated,
-                )
-                records.append(record)
-                if checkpoint_path:
-                    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-                    with checkpoint_path.open("a", encoding="utf-8") as f:
-                        f.write(json.dumps(record) + "\n")
+    records: list[dict] = []
+    checkpoint_file = None
+    try:
+        if checkpoint_path:
+            checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+            checkpoint_file = checkpoint_path.open("a", encoding="utf-8")
+        for category in categories:
+            cell_counts = allocate_cells(category, per_category_total[category.category], rng)
+            for (call_reason, tier), count in cell_counts.items():
+                for i in range(count):
+                    item_id = f"{id_prefix}-{category.category}-{call_reason}-{tier}-{i}"
+                    if item_id in on_disk_checkpoint:
+                        records.append(on_disk_checkpoint[item_id])
+                        continue
+                    generated = await generate_fn(category, call_reason, tier)
+                    record = build_record(
+                        item_id=item_id,
+                        category=category,
+                        call_reason=call_reason,
+                        variability_tier=tier,
+                        generated=generated,
+                    )
+                    records.append(record)
+                    if checkpoint_file:
+                        checkpoint_file.write(json.dumps(record) + "\n")
+                        checkpoint_file.flush()
+    finally:
+        if checkpoint_file:
+            checkpoint_file.close()
     return records
 
 

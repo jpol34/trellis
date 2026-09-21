@@ -7,6 +7,7 @@ import pytest
 
 from trellis.generation.corpus_common import (
     VARIABILITY_TIERS,
+    _load_checkpoint,
     allocate_cells_by_tier,
     allocate_cells_flat,
     allocate_counts,
@@ -235,6 +236,43 @@ async def test_generate_records_resumes_partial_checkpoint(tmp_path):
     assert len(records) == 5
     # The 2 already-checkpointed items aren't regenerated on resume.
     assert calls["n"] == 3
+
+
+async def test_generate_records_does_not_inflate_past_total_with_stale_checkpoint(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    await generate_records(
+        [PROSPECT],
+        20,
+        generate_fn=_fake_generate_fn,
+        rng=random.Random(0),
+        id_prefix="eval",
+        allocate_cells=allocate_cells_by_tier,
+        checkpoint_path=checkpoint_path,
+    )
+    # Simulate the crash-before-cleanup window: a pilot run's checkpoint is left on disk, then a
+    # later full run reuses the same out_dir/checkpoint path with a different total.
+    records = await generate_records(
+        [PROSPECT],
+        100,
+        generate_fn=_fake_generate_fn,
+        rng=random.Random(0),
+        id_prefix="eval",
+        allocate_cells=allocate_cells_by_tier,
+        checkpoint_path=checkpoint_path,
+    )
+    assert len(records) == 100
+    assert len({r["item_id"] for r in records}) == 100
+
+
+def test_load_checkpoint_skips_a_truncated_trailing_line(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    good_record = _record("prospect", "new_inquiry", "clean", 0)
+    checkpoint_path.write_text(
+        json.dumps(good_record) + "\n" + '{"item_id": "prospect-new_inquiry-clean-1", "transcr',
+        encoding="utf-8",
+    )
+    loaded = _load_checkpoint(checkpoint_path)
+    assert list(loaded) == [good_record["item_id"]]
 
 
 async def test_generate_records_only_uses_known_cells():

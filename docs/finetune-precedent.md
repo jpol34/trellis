@@ -27,13 +27,17 @@ Loss combines a supervised cross-entropy term with an RLCD/GRPO-style policy-gra
 either alone:
 
 ```
-r = proper_reward(q, target.unsqueeze(0), qtype, mask, w_sph=0.75, w_rps=1.0)
+r = proper_reward(q, target.unsqueeze(0), batch["qtype"].to(device), mask, w_sph=0.75, w_rps=1.0)
 adv = (r - r.mean(0, keepdim=True)) / (r.std() + 1e-6)   # group-mean baseline (GRPO-style)
 logp = -(((z - logits.unsqueeze(0)) ** 2) * mask).sum(-1) / (2 * sigma ** 2)
 loss_rl = -(adv * logp).mean()
 loss_ce = -(target * torch.log_softmax(logits.masked_fill(~mask, -1e4), -1)).sum(-1).mean()
-loss = (loss_rl + 1.0 * loss_ce) / GRAD_ACCUM
+loss = (loss_rl + 1.0 * loss_ce) / GRAD_ACCUM + 0.0 * act.sum()
 ```
+
+The trailing `+ 0.0 * act.sum()` is a mathematically inert no-op that keeps `act` in the autograd
+graph — likely needed for DDP's `find_unused_parameters` handling under `torchrun`'s two-process
+setup (see GPU-shape section below).
 
 - **Reward**: a strictly proper scoring rule (`proper_reward`, a spherical/ranked-probability-score
   blend) applied to the model's reported probability distribution — this is what "RLCD" refers to
@@ -44,13 +48,15 @@ loss = (loss_rl + 1.0 * loss_ce) / GRAD_ACCUM
 - **CE term**: a standard cross-entropy term against the same target distribution runs alongside
   the RL term at equal weight (`1.0`), so the objective is not RL-only — it's supervised label
   fitting plus a calibration-shaping reward.
-- **Hyperparameters**: 4 epochs over ~30k typed-decision questions; micro-batch 8/GPU, grad
-  accumulation 4, effective batch 64; encoder LR `2.5e-5`, head LR `1.0e-4`; AdamW
+- **Hyperparameters**: 4 epochs over 1,200 training cases (6,000 typed decisions); micro-batch
+  8/GPU, grad accumulation 4, effective batch 64; encoder LR `2.5e-5`, head LR `1.0e-4`; AdamW
   (`weight_decay=0.01`); cosine LR schedule.
 
 Base (zero-shot) checkpoints score near chance on typed-decisions (0.362 English, 0.352
 multilingual). The notebook's fine-tuned run reaches 0.766, above the comparison baseline (Jev,
-0.727), in roughly 4–5 hours on 2×T4.
+0.727), in roughly 4 to 6 minutes running both T4 GPUs in parallel — this is a small-dataset
+fine-tune of an existing head, not a from-scratch training run, which is consistent with the run
+time.
 
 ## Token budget and option-count constraint
 

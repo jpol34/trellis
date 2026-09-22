@@ -16,8 +16,9 @@ each arm's own pre-request data:
   - trellis: no network hop. `TrellisModel._agent.system_one` (the `laya.Agent` bound method) is
     wrapped to record the exact `questions` dict passed in and the exact raw dict returned.
 
-Any `Authorization` header captured is redacted before printing/saving. Run it yourself — it
-makes one real, billed call each to OpenAI and typesafe.ai:
+Any credential-bearing header captured is redacted before printing/saving. Run it yourself — it
+makes 3 real, billed calls each to OpenAI and typesafe.ai (one per field in `FIELDS_TO_USE`;
+more under rate-limiting, since both providers' clients retry transiently-failed calls):
 
     uv run python scripts/debug_wire.py
 
@@ -51,10 +52,20 @@ OUTPUT_PATH = Path("data") / "debug_wire_capture.json"
 FIELDS_TO_USE = ["name", "budget", "pet_info"]
 
 _REDACTED = "***REDACTED***"
-# Bot-mitigation/session cookies (e.g. Cloudflare's __cf_bm on OpenAI's endpoint) aren't API
-# credentials, but they're still live session-identifying values with no reason to persist to
-# disk in a debug artifact — redacted alongside the actual auth header.
-_SENSITIVE_HEADERS = {"authorization", "cookie", "set-cookie"}
+# Matches typesafe_sdk's own canonical sensitive-header set (`_core/constants.py::SECRET_HEADERS`)
+# rather than just the one header (`Authorization`) both arms happen to send today — this script's
+# whole purpose is writing headers to disk, so it should stay safe if a future header (a custom
+# one, or the SDK's own evolution) carries a credential this project doesn't use yet. Bot-
+# mitigation/session cookies (e.g. Cloudflare's __cf_bm on OpenAI's endpoint) aren't API
+# credentials, but they're still live session-identifying values with no reason to persist to disk.
+_SENSITIVE_HEADERS = {
+    "authorization",
+    "proxy-authorization",
+    "x-api-key",
+    "api-key",
+    "cookie",
+    "set-cookie",
+}
 
 
 def _redact_headers(headers: dict[str, str]) -> dict[str, str]:
@@ -127,11 +138,13 @@ async def _capture_gpt51(
     per_field: dict[str, dict] = {}
     try:
         for name, field in fields.items():
-            before = len(sink["requests"])
             answer = await arm.answer(transcript, field, None)
+            # `post_with_retry` can fire the event hooks more than once per `answer()` call
+            # (retrying on 429/5xx) — the *last* recorded request/response is the one that
+            # actually produced `answer`, not necessarily the first attempt.
             per_field[name] = {
-                "request": sink["requests"][before],
-                "response": sink["responses"][before],
+                "request": sink["requests"][-1],
+                "response": sink["responses"][-1],
                 "parsed_answer": answer,
             }
     finally:
@@ -185,11 +198,13 @@ async def _capture_jev(
         arm = JevArm()
         per_field: dict[str, dict] = {}
         for name, field in fields.items():
-            before = len(sink["requests"])
             answer = await arm.answer(transcript, field, candidates_by_field[name])
+            # Same reasoning as `_capture_gpt51`: typesafe_sdk's client has its own retry
+            # policy, so the last recorded request/response is the one `answer` actually came
+            # from, not necessarily the first attempt.
             per_field[name] = {
-                "request": sink["requests"][before],
-                "response": sink["responses"][before],
+                "request": sink["requests"][-1],
+                "response": sink["responses"][-1],
                 "parsed_answer": answer,
             }
         return per_field

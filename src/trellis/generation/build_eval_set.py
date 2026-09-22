@@ -27,6 +27,7 @@ from trellis.generation.corpus_common import (
 from trellis.generation.quality_gates import run_quality_gates
 from trellis.generation.transcript_gen import generate_scenario_item
 from trellis.schema.loader import load_all_categories
+from trellis.settings import settings
 
 TRANSCRIPTS_PER_CATEGORY = 50
 # Fixed so which cells get an allocation remainder is reproducible.
@@ -41,6 +42,7 @@ async def build_eval_set(
     out_dir: Path = DEFAULT_OUT_DIR,
     generate_fn: GenerateFn = generate_scenario_item,
     sample_seed: int = SAMPLE_SEED,
+    concurrency: int = settings.generation_concurrency,
 ) -> int:
     categories = load_all_categories()
     checkpoint_path = out_dir / "checkpoint.jsonl"
@@ -52,6 +54,7 @@ async def build_eval_set(
         id_prefix="eval",
         allocate_cells=allocate_cells_by_tier,
         checkpoint_path=checkpoint_path,
+        concurrency=concurrency,
     )
 
     run_quality_gates(
@@ -80,10 +83,16 @@ def main() -> None:
         f"{TRANSCRIPTS_PER_CATEGORY * 2}, for a manually-reviewed pilot batch.",
     )
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=settings.generation_concurrency,
+        help="Max concurrent generate_fn calls (default: settings.generation_concurrency).",
+    )
     args = parser.parse_args()
 
     total = args.pilot if args.pilot is not None else TRANSCRIPTS_PER_CATEGORY * 2
-    n = asyncio.run(build_eval_set(total=total, out_dir=args.out_dir))
+    n = asyncio.run(build_eval_set(total=total, out_dir=args.out_dir, concurrency=args.concurrency))
     print(f"eval set: {n} records written to {args.out_dir / 'eval.jsonl'}")
 
 

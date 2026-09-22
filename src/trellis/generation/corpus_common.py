@@ -6,6 +6,7 @@ but never from each other — see `tests/unit/test_import_isolation.py`.
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import json
 import random
@@ -156,51 +157,105 @@ async def generate_records(
     id_prefix: str,
     allocate_cells: AllocateCellsFn = allocate_cells_flat,
     checkpoint_path: Path | None = None,
+    concurrency: int = 1,
 ) -> list[dict]:
     """Allocates `total` across `categories` (evenly, seeded), then across each category's
     scenario cells via `allocate_cells`, calling `generate_fn` once per generated item.
 
-    A real generation run is many sequential, billed API calls; without `checkpoint_path`, any
-    single failure partway through (a parse error, a network blip, exhausted retries) loses every
-    item generated so far, since nothing is persisted until the whole run finishes. When given,
-    each successfully generated record is appended to `checkpoint_path` immediately, and a
-    checkpoint already on disk from a prior interrupted run is loaded first so already-generated
-    items are skipped rather than regenerated (and re-billed). Only checkpoint entries whose
-    item_id is actually part of *this* call's allocation are reused — a stale checkpoint left
-    over from a run with a different `total` (e.g. a `--pilot N` run sharing the same out_dir as
-    a later full run) must not inflate the result past `total` or leak mismatched items in."""
+    A real generation run is many billed API calls; without `checkpoint_path`, any single
+    failure partway through (a parse error, a network blip, exhausted retries) loses every item
+    generated so far, since nothing is persisted until the whole run finishes. When given, each
+    successfully generated record is appended to `checkpoint_path` immediately, and a checkpoint
+    already on disk from a prior interrupted run is loaded first so already-generated items are
+    skipped rather than regenerated (and re-billed). Only checkpoint entries whose item_id is
+    actually part of *this* call's allocation are reused — a stale checkpoint left over from a
+    run with a different `total` (e.g. a `--pilot N` run sharing the same out_dir as a later
+    full run) must not inflate the result past `total` or leak mismatched items in.
+
+    Pending (not-yet-checkpointed) items run under `concurrency`-bounded fan-out: the first
+    pending item runs alone first (preflight — fails fast on a bad key/config instead of firing
+    `concurrency` calls that all hit the same error), then the rest run concurrently through an
+    `asyncio.TaskGroup`, each bounded by an `asyncio.Semaphore(concurrency)`. A `TaskGroup` is
+    used instead of `asyncio.gather` so that the first failure cancels every other in-flight
+    task rather than leaving them running after the caller has already seen the exception; the
+    resulting `ExceptionGroup` is unwrapped so callers see the same exception type a sequential
+    run would raise. `concurrency=1` reproduces the original strictly-sequential call order and
+    checkpoint contents exactly. A single `asyncio.Lock()` guards every checkpoint append+flush
+    for the duration of the call — safe under concurrent completions since checkpoint resume
+    already keys strictly by `item_id`, not file position/line order."""
     on_disk_checkpoint = _load_checkpoint(checkpoint_path) if checkpoint_path else {}
     per_category_total = allocate_counts([c.category for c in categories], total, rng)
-    records: list[dict] = []
+
+    plan: list[tuple[str, CategorySpec, str, str]] = []
+    for category in categories:
+        cell_counts = allocate_cells(category, per_category_total[category.category], rng)
+        for (call_reason, tier), count in cell_counts.items():
+            for i in range(count):
+                item_id = f"{id_prefix}-{category.category}-{call_reason}-{tier}-{i}"
+                plan.append((item_id, category, call_reason, tier))
+
+    records_by_id: dict[str, dict] = {}
+    pending: list[tuple[str, CategorySpec, str, str]] = []
+    for item_id, category, call_reason, tier in plan:
+        if item_id in on_disk_checkpoint:
+            records_by_id[item_id] = on_disk_checkpoint[item_id]
+        else:
+            pending.append((item_id, category, call_reason, tier))
+
     checkpoint_file = None
+    checkpoint_lock = asyncio.Lock()
     try:
         if checkpoint_path:
             checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
             checkpoint_file = checkpoint_path.open("a", encoding="utf-8")
-        for category in categories:
-            cell_counts = allocate_cells(category, per_category_total[category.category], rng)
-            for (call_reason, tier), count in cell_counts.items():
-                for i in range(count):
-                    item_id = f"{id_prefix}-{category.category}-{call_reason}-{tier}-{i}"
-                    if item_id in on_disk_checkpoint:
-                        records.append(on_disk_checkpoint[item_id])
-                        continue
-                    generated = await generate_fn(category, call_reason, tier)
-                    record = build_record(
-                        item_id=item_id,
-                        category=category,
-                        call_reason=call_reason,
-                        variability_tier=tier,
-                        generated=generated,
-                    )
-                    records.append(record)
-                    if checkpoint_file:
-                        checkpoint_file.write(json.dumps(record) + "\n")
-                        checkpoint_file.flush()
+
+        async def run_one(
+            item_id: str, category: CategorySpec, call_reason: str, tier: str
+        ) -> None:
+            generated = await generate_fn(category, call_reason, tier)
+            record = build_record(
+                item_id=item_id,
+                category=category,
+                call_reason=call_reason,
+                variability_tier=tier,
+                generated=generated,
+            )
+            if checkpoint_file:
+                async with checkpoint_lock:
+                    checkpoint_file.write(json.dumps(record) + "\n")
+                    checkpoint_file.flush()
+            records_by_id[item_id] = record
+
+        if pending:
+            first, *rest = pending
+            await run_one(*first)
+
+            if rest and concurrency <= 1:
+                # A semaphore alone doesn't guarantee serialization here: if a task never
+                # actually suspends (e.g. a fully synchronous generate_fn), sibling cancellation
+                # from TaskGroup is delivered a full event-loop tick too late to stop it from
+                # already having run to completion. Running the plain sequential loop instead
+                # guarantees `concurrency=1` is bit-for-bit today's behavior, not just "usually
+                # equivalent."
+                for args in rest:
+                    await run_one(*args)
+            elif rest:
+                semaphore = asyncio.Semaphore(concurrency)
+
+                async def run_bounded(args: tuple[str, CategorySpec, str, str]) -> None:
+                    async with semaphore:
+                        await run_one(*args)
+
+                try:
+                    async with asyncio.TaskGroup() as tg:
+                        for args in rest:
+                            tg.create_task(run_bounded(args))
+                except ExceptionGroup as eg:
+                    raise eg.exceptions[0] from None
     finally:
         if checkpoint_file:
             checkpoint_file.close()
-    return records
+    return [records_by_id[item_id] for item_id, *_ in plan]
 
 
 def default_cell_key(record: dict) -> tuple[str, str, str]:

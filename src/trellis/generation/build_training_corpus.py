@@ -26,6 +26,7 @@ from trellis.generation.corpus_common import (
 from trellis.generation.quality_gates import run_quality_gates
 from trellis.generation.transcript_gen import generate_scenario_item
 from trellis.schema.loader import load_all_categories
+from trellis.settings import settings
 
 TRANSCRIPTS_PER_CATEGORY = 400
 # Fixed so which cells get an allocation remainder, and split membership, are reproducible.
@@ -42,6 +43,7 @@ async def build_training_corpus(
     generate_fn: GenerateFn = generate_scenario_item,
     sample_seed: int = SAMPLE_SEED,
     split_seed: int = SPLIT_SEED,
+    concurrency: int = settings.generation_concurrency,
 ) -> dict[str, int]:
     categories = load_all_categories()
     checkpoint_path = out_dir / "checkpoint.jsonl"
@@ -53,6 +55,7 @@ async def build_training_corpus(
         id_prefix="train",
         allocate_cells=allocate_cells_flat,
         checkpoint_path=checkpoint_path,
+        concurrency=concurrency,
     )
 
     run_quality_gates(
@@ -88,10 +91,18 @@ def main() -> None:
         f"{TRANSCRIPTS_PER_CATEGORY * 2}, for a manually-reviewed pilot batch.",
     )
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=settings.generation_concurrency,
+        help="Max concurrent generate_fn calls (default: settings.generation_concurrency).",
+    )
     args = parser.parse_args()
 
     total = args.pilot if args.pilot is not None else TRANSCRIPTS_PER_CATEGORY * 2
-    counts = asyncio.run(build_training_corpus(total=total, out_dir=args.out_dir))
+    counts = asyncio.run(
+        build_training_corpus(total=total, out_dir=args.out_dir, concurrency=args.concurrency)
+    )
     print(
         f"train: {counts['train']}  val: {counts['val']}  "
         f"held_out_internal: {counts['held_out_internal']}"

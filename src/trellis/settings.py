@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     typesafe_api_key: str = ""
     generation_claude_model: str = ""
+    generation_concurrency: int = 30
     reference_gpt_model: str = "gpt-5.1"
     jev_base_url: str = ""
 

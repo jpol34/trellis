@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import random
 
@@ -323,6 +324,115 @@ async def test_generate_records_only_uses_known_cells():
     for r in records:
         assert r["call_reason"] in PROSPECT.scenarios.call_reasons
         assert r["variability_tier"] in VARIABILITY_TIERS
+
+
+async def test_generate_records_concurrency_overlaps_calls(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    in_flight = {"current": 0, "max": 0}
+
+    async def slow_generate_fn(category, call_reason, variability_tier) -> dict:
+        in_flight["current"] += 1
+        in_flight["max"] = max(in_flight["max"], in_flight["current"])
+        await asyncio.sleep(0.05)
+        in_flight["current"] -= 1
+        return _generated(call_reason)
+
+    records = await generate_records(
+        [PROSPECT],
+        10,
+        generate_fn=slow_generate_fn,
+        rng=random.Random(0),
+        id_prefix="t",
+        checkpoint_path=checkpoint_path,
+        concurrency=5,
+    )
+    assert len(records) == 10
+    # With concurrency=5, at least some calls must have been in flight simultaneously — strictly
+    # sequential execution (as with the concurrency=1 default) would never exceed 1.
+    assert in_flight["max"] > 1
+
+
+async def test_generate_records_concurrency_checkpoint_has_no_corruption_or_duplicates(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    records = await generate_records(
+        [PROSPECT, RESIDENT],
+        40,
+        generate_fn=_fake_generate_fn,
+        rng=random.Random(0),
+        id_prefix="t",
+        checkpoint_path=checkpoint_path,
+        concurrency=8,
+    )
+    assert len(records) == 40
+    assert len({r["item_id"] for r in records}) == 40
+
+    checkpoint_lines = checkpoint_path.read_text(encoding="utf-8").splitlines()
+    assert len(checkpoint_lines) == 40
+    checkpoint_ids = [json.loads(line)["item_id"] for line in checkpoint_lines]
+    assert len(checkpoint_ids) == len(set(checkpoint_ids)) == 40
+
+
+async def test_generate_records_concurrency_resumes_from_checkpoint_without_regenerating(
+    tmp_path,
+):
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    calls = {"n": 0}
+
+    async def counting_generate_fn(category, call_reason, variability_tier) -> dict:
+        calls["n"] += 1
+        return _generated(call_reason)
+
+    first_pass = await generate_records(
+        [PROSPECT],
+        12,
+        generate_fn=counting_generate_fn,
+        rng=random.Random(0),
+        id_prefix="t",
+        checkpoint_path=checkpoint_path,
+        concurrency=4,
+    )
+    assert calls["n"] == 12
+
+    second_pass = await generate_records(
+        [PROSPECT],
+        12,
+        generate_fn=counting_generate_fn,
+        rng=random.Random(0),
+        id_prefix="t",
+        checkpoint_path=checkpoint_path,
+        concurrency=4,
+    )
+    assert calls["n"] == 12
+    assert {r["item_id"] for r in second_pass} == {r["item_id"] for r in first_pass}
+
+
+async def test_generate_records_concurrency_fails_fast_with_original_exception_type(tmp_path):
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+
+    class BoomError(RuntimeError):
+        pass
+
+    async def flaky_generate_fn(category, call_reason, variability_tier) -> dict:
+        if call_reason == PROSPECT.scenarios.call_reasons[0]:
+            await asyncio.sleep(0.05)
+            raise BoomError("simulated concurrent failure")
+        await asyncio.sleep(0.1)
+        return _generated(call_reason)
+
+    with pytest.raises(BoomError):
+        await generate_records(
+            [PROSPECT],
+            10,
+            generate_fn=flaky_generate_fn,
+            rng=random.Random(0),
+            id_prefix="t",
+            checkpoint_path=checkpoint_path,
+            concurrency=5,
+        )
+    # Sibling tasks still in flight when the failure hit must have been cancelled rather than
+    # left to complete, so the checkpoint holds strictly fewer than the full total.
+    checkpoint_lines = checkpoint_path.read_text(encoding="utf-8").splitlines()
+    assert len(checkpoint_lines) < 10
 
 
 def _record(category: str, call_reason: str, tier: str, idx: int) -> dict:

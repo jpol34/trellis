@@ -80,6 +80,8 @@ async def test_answer_maps_chosen_key_back_to_index(_patched_transport):
     assert result["chosen_index"] == 2
     assert result["value"] == "not mentioned"
     assert result["confidence"] == 0.83
+    assert result["input_tokens"] == 42
+    assert result["output_tokens"] == 3
 
 
 async def test_criteria_sent_matches_candidate_order(_patched_transport):

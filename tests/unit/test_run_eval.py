@@ -16,6 +16,7 @@ from trellis.schema.types import FieldSpec
 from trellis.validate.run_eval import (
     _EvalCheckpoint,
     _field_specs_by_category,
+    _score_one,
     load_eval_set,
     run_all,
     run_arm,
@@ -314,6 +315,38 @@ def test_load_eval_set_reads_every_jsonl_in_dir(tmp_path: Path) -> None:
 def test_load_eval_set_raises_when_no_jsonl_files(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_eval_set(tmp_path)
+
+
+class TokenArm:
+    name = "priced"
+    mode = "closed_set"
+
+    async def answer(self, transcript, field, candidates) -> ArmAnswer:
+        return ArmAnswer(
+            value=candidates[0],
+            chosen_index=0,
+            confidence=0.9,
+            input_tokens=100,
+            output_tokens=20,
+        )
+
+
+async def test_score_one_carries_token_usage_into_item_result() -> None:
+    arm = TokenArm()
+    record = _record("r1", NAME_FIELD_RECORD, PET_MENTIONED_RECORD)
+    item = await _score_one(arm, record, NAME_FIELD_RECORD, REQUIRED_FIELD)
+
+    assert item.input_tokens == 100
+    assert item.output_tokens == 20
+
+
+async def test_score_one_leaves_token_usage_none_when_arm_omits_it() -> None:
+    arm = ClosedArm(chosen_index=0)
+    record = _record("r1", NAME_FIELD_RECORD, PET_MENTIONED_RECORD)
+    item = await _score_one(arm, record, NAME_FIELD_RECORD, REQUIRED_FIELD)
+
+    assert item.input_tokens is None
+    assert item.output_tokens is None
 
 
 class SlowArm:

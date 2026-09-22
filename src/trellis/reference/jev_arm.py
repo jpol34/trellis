@@ -59,6 +59,8 @@ class JevArm:
             value=candidates[chosen_index],
             chosen_index=chosen_index,
             confidence=answer.confidence,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
         )
 
 

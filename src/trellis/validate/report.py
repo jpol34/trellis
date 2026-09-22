@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+from trellis.validate.costs import BACKEND_COSTS, usage_cost
 from trellis.validate.metrics import bootstrap_accuracy_ci, latency_percentiles, precision_recall_f1
 from trellis.validate.states import FiveState
 
@@ -28,11 +29,25 @@ _CAVEAT = """> **Different tasks, not a ranked leaderboard.** `trellis` and `jev
 > `validate/matchers.py`. A closed-set arm's job is strictly easier (bounded candidate set, no
 > free-text ambiguity), so a higher closed-set accuracy than gpt-5.1's open-extraction accuracy
 > does not mean the closed-set arm is the better model — the two numbers answer different
-> questions."""
+> questions.
+>
+> **Cost is real observed token usage, not every arm's cost.** The Cost column is computed from
+> each item's actual usage reported by the arm's own API response, at real published rates (see
+> `validate/costs.py`) — it's only meaningful for token-billed arms (gpt-5.1, jev). `trellis`'s
+> cost is compute (a RunPod GPU or local CPU), not tokens, and is out of scope here — its "n/a"
+> means "not applicable," not "$0"."""
 
 
 def _is_correct(state: FiveState | None) -> bool:
     return state in ("present_correct", "correctly_absent")
+
+
+def _cost_str(backend_name: str, items: list) -> str:
+    cost = BACKEND_COSTS.get(backend_name)
+    if cost is None:
+        return "n/a"
+    total = sum(usage_cost(cost, i.input_tokens, i.output_tokens) for i in items)
+    return f"${total:.4f}"
 
 
 def _arm_row(backend_name: str, mode: str, items: list) -> str:
@@ -40,7 +55,10 @@ def _arm_row(backend_name: str, mode: str, items: list) -> str:
     errors = len(items) - len(valid)
 
     if not valid:
-        return f"| {backend_name} | {mode} | no data ({errors} errors) | - | - | - | - | - | - |"
+        return (
+            f"| {backend_name} | {mode} | no data ({errors} errors) | - | - | - | - | - | - | "
+            f"{_cost_str(backend_name, valid)} |"
+        )
 
     states = [i.state for i in valid]
     correct = [_is_correct(s) for s in states]
@@ -55,7 +73,7 @@ def _arm_row(backend_name: str, mode: str, items: list) -> str:
     return (
         f"| {backend_name} | {mode} | {ci.point:.1%} [{ci.low:.1%}, {ci.high:.1%}] | "
         f"{prf1.precision:.3f} | {prf1.recall:.3f} | {prf1.f1:.3f} | {state_str} | "
-        f"{errors} | {pct['p50']:.0f} |"
+        f"{errors} | {pct['p50']:.0f} | {_cost_str(backend_name, valid)} |"
     )
 
 
@@ -65,15 +83,16 @@ def _category_table(category: str, results: dict) -> str:
         "",
         "| Arm | Mode | Accuracy (95% CI) | Precision | Recall | F1 | "
         + " / ".join(STATE_ORDER)
-        + " | Errors | p50 ms |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        + " | Errors | p50 ms | Cost |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for backend_name, backend_result in results.items():
         dataset_result = backend_result.datasets.get(category)
         items = dataset_result.items if dataset_result else []
         if not items:
             lines.append(
-                f"| {backend_name} | {backend_result.mode} | no data | - | - | - | - | - | - |"
+                f"| {backend_name} | {backend_result.mode} | no data | - | - | - | - | - | - | "
+                f"{_cost_str(backend_name, items)} |"
             )
             continue
         lines.append(_arm_row(backend_name, backend_result.mode, items))

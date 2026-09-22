@@ -112,8 +112,13 @@ class GPT51Arm:
             },
             timeout=60.0,
         )
-        text = resp.json()["choices"][0]["message"]["content"]
-        return _parse_response(text)
+        body = resp.json()
+        text = body["choices"][0]["message"]["content"]
+        answer = _parse_response(text)
+        usage = body.get("usage") or {}
+        answer["input_tokens"] = usage.get("prompt_tokens")
+        answer["output_tokens"] = usage.get("completion_tokens")
+        return answer
 
 
 register_arm(GPT51Arm())

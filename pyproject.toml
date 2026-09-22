@@ -31,6 +31,12 @@ gen = [
     "anthropic>=0.40",
     "openai>=1.50",
 ]
+serve = [
+    "transformers>=4.46",
+    "torch>=2.5",
+    "laya>=0.3.5",
+    "runpod>=1.7",
+]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",

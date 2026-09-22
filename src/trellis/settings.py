@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     runpod_gpu_type_id: str = "NVIDIA GeForce RTX 4090"
     runpod_disk_gb: int = 20
     runpod_registry_id: str = ""
+    # Separate from `runpod_image` (the training pod's image) -- the serving image built from
+    # `stack/Dockerfile.serve` is a different, smaller artifact pushed to the same registry
+    # (`runpod_registry_id` covers both).
+    runpod_serve_image: str = ""
 
     # LLM providers used for synthetic transcript generation and as reference benchmarks
     anthropic_api_key: str = ""

@@ -65,8 +65,12 @@ class TrellisArm:
         return self._model
 
     async def _flush(self, transcript: str, items: list[_PendingItem]) -> None:
-        model = await self._get_model()
+        # `_get_model()` is inside this try, not before it: a checkpoint-load failure there is
+        # just as fatal to every waiting follower as a `discriminate_batch` failure is, and must
+        # resolve their Futures the same way rather than propagating out and leaving them
+        # hanging on `await future` forever (`run_eval.py` has no timeout around `answer()`).
         try:
+            model = await self._get_model()
             results = await asyncio.to_thread(
                 model.discriminate_batch,
                 transcript,

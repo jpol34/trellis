@@ -27,7 +27,11 @@ class DiscriminationResult:
     confidence: float
 
 
-def _question_key(i: int) -> str:
+def _question_key(i: int, chunk_size: int) -> str:
+    # A chunk of exactly one item is what `discriminate()` sends, so it keeps the original
+    # unsuffixed key — the exact wire shape a single-item call sent before batching existed.
+    if chunk_size == 1:
+        return QUESTION_NAME
     return f"{QUESTION_NAME}_{i}"
 
 
@@ -101,8 +105,9 @@ class TrellisModel:
         max_size = settings.trellis_batch_max_size
         for chunk_start in range(0, len(valid_indices), max_size):
             chunk_indices = valid_indices[chunk_start : chunk_start + max_size]
+            chunk_size = len(chunk_indices)
             questions = {
-                _question_key(i): {
+                _question_key(i, chunk_size): {
                     "type": "choice",
                     "instructions": f"Which value applies for the {items[i][0].name!r} field?",
                     "criteria": candidates_to_criteria(items[i][1]),
@@ -112,18 +117,26 @@ class TrellisModel:
 
             # Serialized: `system_one` on the shared `laya.Agent` plus the device-resolution/
             # thread-pinning that follows it are not safe to run concurrently from multiple
-            # threads against one `TrellisModel` instance.
-            with self._lock:
-                response = self._agent.system_one(transcript, questions)
-                # `system_one` can itself fall back to CPU mid-call (e.g. a GPU OOM after
-                # construction), so re-resolve/re-pin after every call rather than trusting the
-                # construction-time value.
-                self.device = self._resolve_device_and_pin_threads()
+            # threads against one `TrellisModel` instance. A chunk's `system_one` failure is
+            # caught here (rather than left to propagate out of the whole method) so it can
+            # never discard results already computed by an earlier, successful chunk.
+            try:
+                with self._lock:
+                    response = self._agent.system_one(transcript, questions)
+                    # `system_one` can itself fall back to CPU mid-call (e.g. a GPU OOM after
+                    # construction), so re-resolve/re-pin after every call rather than trusting
+                    # the construction-time value.
+                    self.device = self._resolve_device_and_pin_threads()
+            except Exception as e:  # noqa: BLE001 - isolated to this chunk's items only
+                for i in chunk_indices:
+                    results[i] = e
+                continue
 
             answers = response["answers"]
             for i in chunk_indices:
                 try:
-                    results[i] = _parse_choice_answer(answers, _question_key(i), items[i][1])
+                    key = _question_key(i, chunk_size)
+                    results[i] = _parse_choice_answer(answers, key, items[i][1])
                 except Exception as e:  # noqa: BLE001 - one item's malformed answer isolated
                     results[i] = e
 

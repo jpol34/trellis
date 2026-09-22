@@ -168,3 +168,26 @@ async def test_batch_level_exception_resolves_every_waiting_future(_patched_mode
             arm.answer("shared transcript", FIELD, CANDIDATES),
             arm.answer("shared transcript", OTHER_FIELD, OTHER_CANDIDATES),
         )
+
+
+async def test_model_construction_failure_during_flush_resolves_every_follower(monkeypatch):
+    """A checkpoint-load failure inside `_flush`'s leader must not leave concurrent followers
+    hanging on `await future` forever — regression test for the construction call having lived
+    outside `_flush`'s try/except."""
+
+    def _failing_ctor(checkpoint_dir: str, device: str):
+        raise RuntimeError("checkpoint load failed")
+
+    monkeypatch.setattr(trellis_arm_module, "TrellisModel", _failing_ctor)
+    arm = TrellisArm()
+
+    async def _await_with_timeout(coro):
+        return await asyncio.wait_for(coro, timeout=5)
+
+    with pytest.raises(RuntimeError, match="checkpoint load failed"):
+        await asyncio.gather(
+            _await_with_timeout(arm.answer("shared transcript", FIELD, CANDIDATES)),
+            _await_with_timeout(
+                arm.answer("shared transcript", OTHER_FIELD, OTHER_CANDIDATES)
+            ),
+        )

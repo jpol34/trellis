@@ -302,3 +302,13 @@ def write_jsonl(path: Path, records: Iterable[dict]) -> int:
             f.write(json.dumps(record) + "\n")
             count += 1
     return count
+
+
+def read_jsonl(path: Path) -> list[dict]:
+    records: list[dict] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                records.append(json.loads(line))
+    return records

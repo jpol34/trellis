@@ -164,6 +164,72 @@ def test_polls_through_in_progress_before_completed(monkeypatch):
     assert model.last_device_used == "cpu"
 
 
+def test_poll_retries_through_transient_status_error(monkeypatch):
+    monkeypatch.setattr(trellis_http_model_module.settings, "trellis_http_poll_interval_seconds", 0)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/run"):
+            return httpx.Response(200, json={"id": "job-1", "status": "IN_QUEUE"})
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(503)
+        return httpx.Response(
+            200,
+            json={
+                "id": "job-1",
+                "status": "COMPLETED",
+                "output": {
+                    "device_used": "cuda",
+                    "results": [
+                        {"chosen_index": 0, "chosen_value": "leak", "confidence": 0.9}
+                    ],
+                },
+            },
+        )
+
+    _mock_client(monkeypatch, handler)
+    model = TrellisHttpModel(ENDPOINT_ID)
+
+    results = model.discriminate_batch("t", [(FIELD_A, CANDIDATES_A)])
+
+    assert calls["n"] == 2
+    assert results[0].chosen_value == "leak"
+
+
+def test_poll_retries_through_transport_error(monkeypatch):
+    monkeypatch.setattr(trellis_http_model_module.settings, "trellis_http_poll_interval_seconds", 0)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/run"):
+            return httpx.Response(200, json={"id": "job-1", "status": "IN_QUEUE"})
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise httpx.ConnectError("connection reset", request=request)
+        return httpx.Response(
+            200,
+            json={
+                "id": "job-1",
+                "status": "COMPLETED",
+                "output": {
+                    "device_used": "cuda",
+                    "results": [
+                        {"chosen_index": 0, "chosen_value": "leak", "confidence": 0.9}
+                    ],
+                },
+            },
+        )
+
+    _mock_client(monkeypatch, handler)
+    model = TrellisHttpModel(ENDPOINT_ID)
+
+    results = model.discriminate_batch("t", [(FIELD_A, CANDIDATES_A)])
+
+    assert calls["n"] == 2
+    assert results[0].chosen_value == "leak"
+
+
 def test_failed_status_raises_runpod_job_failed_error(monkeypatch):
     _route(
         monkeypatch,

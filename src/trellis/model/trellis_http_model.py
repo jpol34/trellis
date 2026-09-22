@@ -17,7 +17,7 @@ import time
 import httpx
 
 from trellis.model.trellis_model import DiscriminationResult
-from trellis.reference.http import post_with_retry
+from trellis.reference.http import _RETRYABLE_STATUSES, post_with_retry
 from trellis.schema.types import FieldSpec
 from trellis.settings import settings
 
@@ -41,9 +41,13 @@ class TrellisHttpModel:
 
     def __init__(self, endpoint_id: str) -> None:
         self._endpoint_id = endpoint_id
-        # Set after each successful call — the served side's device fallback (GPU OOM -> CPU)
-        # is otherwise invisible across the network boundary, unlike the local backend where
-        # `TrellisModel.device` is directly inspectable.
+        # Best-effort observability only, not per-call-accurate: the served side's device
+        # fallback (GPU OOM -> CPU) is otherwise invisible across the network boundary, unlike
+        # the local backend where `TrellisModel.device` is directly inspectable. `TrellisArm`
+        # reuses one `TrellisHttpModel` instance across concurrent per-transcript flushes on
+        # separate threads, so concurrent calls race on this attribute (last writer wins) —
+        # fine for eyeballing "did the endpoint fall back to CPU" between runs, not safe to read
+        # as "which device served *this specific* call" under concurrency.
         self.last_device_used: str | None = None
 
     def discriminate_batch(
@@ -117,18 +121,27 @@ class TrellisHttpModel:
         url = f"{_RUNPOD_BASE_URL}/{self._endpoint_id}/status/{job_id}"
 
         while True:
-            resp = await client.get(url, headers=headers, timeout=30.0)
-            resp.raise_for_status()
-            body = resp.json()
-            status = body["status"]
+            # A transient failure checking status (a dropped connection, or a 429/5xx from the
+            # status endpoint itself) doesn't mean the underlying RunPod job failed — treat it
+            # the same as "not done yet" and let the next poll iteration retry, rather than
+            # aborting the whole call (and every sibling Future waiting on it) over one blip
+            # well within the overall poll budget.
+            try:
+                resp = await client.get(url, headers=headers, timeout=30.0)
+            except httpx.TransportError:
+                resp = None
+            if resp is not None and resp.status_code not in _RETRYABLE_STATUSES:
+                resp.raise_for_status()
+                body = resp.json()
+                status = body["status"]
+                if status == "COMPLETED":
+                    return body["output"]
+                if status == "FAILED":
+                    raise RunPodJobFailedError(body.get("error", "unknown error"))
 
-            if status == "COMPLETED":
-                return body["output"]
-            if status == "FAILED":
-                raise RunPodJobFailedError(body.get("error", "unknown error"))
             if time.monotonic() >= deadline:
                 raise RunPodPollTimeoutError(
                     f"RunPod job {job_id} did not complete within "
-                    f"{settings.trellis_http_poll_timeout_seconds}s (last status: {status!r})"
+                    f"{settings.trellis_http_poll_timeout_seconds}s"
                 )
             await asyncio.sleep(settings.trellis_http_poll_interval_seconds)

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +29,13 @@ class Settings(BaseSettings):
     trellis_cpu_threads: int = 4
     trellis_batch_debounce_seconds: float = 0.02
     trellis_batch_max_size: int = 16
+
+    # Backend selection: "local" runs TrellisModel in-process (today's default, unchanged);
+    # "http" calls a deployed RunPod Serverless endpoint via TrellisHttpModel instead.
+    trellis_backend: Literal["local", "http"] = "local"
+    trellis_http_endpoint_id: str = ""
+    trellis_http_poll_interval_seconds: float = 1.0
+    trellis_http_poll_timeout_seconds: float = 180.0
 
     # Local data locations
     # `checkpoint_dir` is the base directory training writes new timestamped run subdirectories

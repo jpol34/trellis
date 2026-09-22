@@ -42,8 +42,9 @@ class _FakeModel:
 
 @pytest.fixture
 def _patched_model(monkeypatch):
-    """`TrellisArm._get_model` constructs its own `TrellisModel` lazily on first use — patch
-    that construction so tests never need a real checkpoint on disk."""
+    """`TrellisArm._get_backend` constructs its own `TrellisModel` lazily on first use (when
+    `trellis_backend="local"`, the default) — patch that construction so tests never need a
+    real checkpoint on disk."""
     instances: list[_FakeModel] = []
 
     def _fake_ctor(checkpoint_dir: str, device: str) -> _FakeModel:
@@ -160,7 +161,7 @@ async def test_late_arrival_after_flush_starts_a_fresh_batch(_patched_model):
 
 async def test_batch_level_exception_resolves_every_waiting_future(_patched_model):
     arm = TrellisArm()
-    await arm._get_model()
+    await arm._get_backend()
     _patched_model[0].raise_on_batch = RuntimeError("boom")
 
     with pytest.raises(RuntimeError, match="boom"):
@@ -191,3 +192,34 @@ async def test_model_construction_failure_during_flush_resolves_every_follower(m
                 arm.answer("shared transcript", OTHER_FIELD, OTHER_CANDIDATES)
             ),
         )
+
+
+async def test_backend_defaults_to_local_trellis_model(_patched_model):
+    arm = TrellisArm()
+
+    backend = await arm._get_backend()
+
+    assert len(_patched_model) == 1
+    assert backend is _patched_model[0]
+
+
+async def test_http_backend_selected_when_configured(monkeypatch):
+    monkeypatch.setattr(trellis_arm_module.settings, "trellis_backend", "http")
+    monkeypatch.setattr(trellis_arm_module.settings, "trellis_http_endpoint_id", "ep-123")
+
+    instances: list[trellis_arm_module.TrellisHttpModel] = []
+    real_ctor = trellis_arm_module.TrellisHttpModel
+
+    def _spy_ctor(endpoint_id: str):
+        instance = real_ctor(endpoint_id)
+        instances.append(instance)
+        return instance
+
+    monkeypatch.setattr(trellis_arm_module, "TrellisHttpModel", _spy_ctor)
+
+    arm = TrellisArm()
+    backend = await arm._get_backend()
+
+    assert len(instances) == 1
+    assert backend is instances[0]
+    assert instances[0]._endpoint_id == "ep-123"

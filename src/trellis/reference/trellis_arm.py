@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import asyncio
 
-from trellis.model.trellis_model import TrellisModel
+from trellis.model.trellis_http_model import TrellisHttpModel
+from trellis.model.trellis_model import TrellisBackend, TrellisModel
 from trellis.reference.base import ArmAnswer, register_arm
 from trellis.schema.types import FieldSpec
 from trellis.settings import settings
@@ -46,8 +47,10 @@ class TrellisArm:
     def __init__(self) -> None:
         # `TrellisModel` construction loads the checkpoint onto `device` — too expensive to pay
         # at import time (when `register_arm` below runs), so it's deferred to the first call.
-        self._model: TrellisModel | None = None
-        # Guards first-use construction: concurrent `answer()` calls racing on `self._model`
+        # `TrellisHttpModel` construction is cheap (just stores an endpoint id) but is still
+        # deferred through the same lazy path for uniformity with the local backend.
+        self._backend: TrellisBackend | None = None
+        # Guards first-use construction: concurrent `answer()` calls racing on `self._backend`
         # being None could otherwise each load a checkpoint and silently discard one.
         self._construct_lock = asyncio.Lock()
         # Per-transcript buffer of not-yet-flushed requests. The check-then-append in `answer()`
@@ -55,24 +58,27 @@ class TrellisArm:
         # a lock: nothing else can interleave there.
         self._pending: dict[str, list[_PendingItem]] = {}
 
-    async def _get_model(self) -> TrellisModel:
-        if self._model is None:
+    async def _get_backend(self) -> TrellisBackend:
+        if self._backend is None:
             async with self._construct_lock:
-                if self._model is None:  # re-check: another task may have won the race
-                    self._model = TrellisModel(
-                        settings.trellis_checkpoint_path, device=settings.trellis_device
-                    )
-        return self._model
+                if self._backend is None:  # re-check: another task may have won the race
+                    if settings.trellis_backend == "http":
+                        self._backend = TrellisHttpModel(settings.trellis_http_endpoint_id)
+                    else:
+                        self._backend = TrellisModel(
+                            settings.trellis_checkpoint_path, device=settings.trellis_device
+                        )
+        return self._backend
 
     async def _flush(self, transcript: str, items: list[_PendingItem]) -> None:
-        # `_get_model()` is inside this try, not before it: a checkpoint-load failure there is
+        # `_get_backend()` is inside this try, not before it: a construction failure there is
         # just as fatal to every waiting follower as a `discriminate_batch` failure is, and must
         # resolve their Futures the same way rather than propagating out and leaving them
         # hanging on `await future` forever (`run_eval.py` has no timeout around `answer()`).
         try:
-            model = await self._get_model()
+            backend = await self._get_backend()
             results = await asyncio.to_thread(
-                model.discriminate_batch,
+                backend.discriminate_batch,
                 transcript,
                 [(item.field, item.candidates) for item in items],
             )

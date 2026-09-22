@@ -33,22 +33,28 @@ class TrellisModel:
 
     def __init__(self, checkpoint_dir: str, device: str = "cpu") -> None:
         self._agent = laya.load(checkpoint_dir, device=device)
-        # `laya.Agent` silently falls back to CPU (only printing a warning) if the requested
-        # device is unavailable or OOMs, so the thread-pinning decision below must key off the
-        # *resolved* device, not the requested one.
-        self.device = self._agent.device.type
+        self.device = self._resolve_device_and_pin_threads()
 
-        if self.device == "cpu":
+    def _resolve_device_and_pin_threads(self) -> str:
+        # `laya.Agent` can silently fall back to CPU (only printing a warning) both at load time
+        # and mid-call, on OOM, so the thread-pinning decision must key off the *resolved* device
+        # at the time of the call, not a value cached from construction.
+        device = self._agent.device.type
+        if device == "cpu":
             # PyTorch sizes its default thread pool from the host machine's core count, not a
             # per-request budget — on a shared/containerized host that causes contention well
             # past what a single sequential forward pass over this checkpoint needs. See
             # laya-bench's `backend.py::LayaBackend` for the same rationale.
             torch.set_num_threads(settings.trellis_cpu_threads)
+        return device
 
     def discriminate(
         self, transcript: str, field: FieldSpec, candidates: list[str]
     ) -> DiscriminationResult:
         """Runs one synchronous forward pass choosing among `candidates` for `field`."""
+        if not candidates:
+            raise ValueError("discriminate() requires a non-empty candidates list")
+
         criteria = candidates_to_criteria(candidates)
         response = self._agent.system_one(
             transcript,
@@ -60,6 +66,9 @@ class TrellisModel:
                 }
             },
         )
+        # `system_one` can itself fall back to CPU mid-call (e.g. a GPU OOM after construction),
+        # so re-resolve/re-pin after every call rather than trusting the construction-time value.
+        self.device = self._resolve_device_and_pin_threads()
 
         try:
             answer = response["answers"][QUESTION_NAME]

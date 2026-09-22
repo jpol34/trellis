@@ -1,0 +1,20 @@
+# CUDA-enabled base image so `pip install -e .[serve]` reuses the base's torch-cuda build
+# instead of pulling the CPU-only wheel from PyPI. Pinned to torch>=2.5 — `transformers`
+# disables its PyTorch backend entirely (not just a warning) below that version.
+FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
+
+WORKDIR /app
+
+COPY pyproject.toml README.md ./
+COPY src/ src/
+RUN pip install --no-cache-dir -e ".[serve]"
+
+# Fail the build, not a silent CPU fallback in production, if the serve extra's torch>=2.5 pin
+# somehow resolved a fresh (CPU-only) wheel instead of reusing the base image's CUDA build.
+RUN python -c "import torch; assert torch.version.cuda is not None, 'torch has no CUDA build'"
+
+ENV PYTHONUNBUFFERED=1
+
+# No checkpoint is baked into this image — it's delivered via a RunPod Network Volume mounted
+# at runtime and read through TRELLIS_CHECKPOINT_PATH, same as the local backend.
+ENTRYPOINT ["python", "-m", "trellis.serving.handler"]

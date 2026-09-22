@@ -85,6 +85,9 @@ def _parse_response(text: str) -> ArmAnswer:
 
 class GPT51Arm:
     name = "gpt-5.1"
+    # Unlike the trellis/Jev arms, this one extracts free text from the transcript instead of
+    # choosing among pre-built candidates, so it's scored by matchers.py rather than closed_set.py.
+    mode = "open_extraction"
 
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
         # A benchmark run calls `answer()` once per transcript across a whole dataset — a

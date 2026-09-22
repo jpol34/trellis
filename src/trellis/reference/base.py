@@ -19,6 +19,10 @@ class ArmAnswer(TypedDict):
 
 class ReferenceArm(Protocol):
     name: str
+    # "closed_set": `answer()` is always given `candidates` and scored by `validate/closed_set.py`.
+    # "open_extraction": `answer()` is always given `candidates=None` and scored by
+    # `validate/matchers.py`.
+    mode: str
 
     async def answer(
         self, transcript: str, field: FieldSpec, candidates: list[str] | None

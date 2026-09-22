@@ -27,6 +27,34 @@ class DiscriminationResult:
     confidence: float
 
 
+def _question_key(i: int) -> str:
+    return f"{QUESTION_NAME}_{i}"
+
+
+def _parse_choice_answer(
+    answers: dict, key: str, candidates: list[str]
+) -> DiscriminationResult:
+    try:
+        answer = answers[key]
+    except KeyError as e:
+        raise ValueError(
+            f"trellis model response is missing the {key!r} answer: {answers!r}"
+        ) from e
+
+    chosen_index = criteria_key_to_index(answer["choice"])
+    if not 0 <= chosen_index < len(candidates):
+        raise ValueError(
+            f"trellis model returned candidate index {chosen_index} out of range for "
+            f"{len(candidates)} candidates: {answer['choice']!r}"
+        )
+
+    return DiscriminationResult(
+        chosen_index=chosen_index,
+        chosen_value=candidates[chosen_index],
+        confidence=answer["confidence"],
+    )
+
+
 class TrellisModel:
     """Wraps a `laya.Agent` loaded from a fine-tuned checkpoint directory on `device`. Construct
     once per process — loading places the checkpoint on `device`, too expensive to repeat per
@@ -34,7 +62,7 @@ class TrellisModel:
 
     def __init__(self, checkpoint_dir: str, device: str = "cpu") -> None:
         self._agent = laya.load(checkpoint_dir, device=device)
-        # Guards each `discriminate()` call: `torch.set_num_threads` is a process-global
+        # Guards each `discriminate_batch()` call: `torch.set_num_threads` is a process-global
         # setting and `self.device` is a plain shared attribute, so concurrent calls on this
         # instance (e.g. via `asyncio.to_thread` from a shared arm) must be serialized rather
         # than racing each other's device-resolution/thread-pinning.
@@ -54,51 +82,59 @@ class TrellisModel:
             torch.set_num_threads(settings.trellis_cpu_threads)
         return device
 
+    def discriminate_batch(
+        self, transcript: str, items: list[tuple[FieldSpec, list[str]]]
+    ) -> list[DiscriminationResult | Exception]:
+        """Runs one or more forward passes choosing among each item's candidates for its field,
+        against the same transcript. Batches items together into `system_one()` calls of at most
+        `settings.trellis_batch_max_size`, one bad item's failure never affecting siblings in the
+        same chunk. Results are returned in the same order as `items`."""
+        results: list[DiscriminationResult | Exception | None] = [None] * len(items)
+
+        valid_indices: list[int] = []
+        for i, (_field, candidates) in enumerate(items):
+            if not candidates:
+                results[i] = ValueError("discriminate() requires a non-empty candidates list")
+            else:
+                valid_indices.append(i)
+
+        max_size = settings.trellis_batch_max_size
+        for chunk_start in range(0, len(valid_indices), max_size):
+            chunk_indices = valid_indices[chunk_start : chunk_start + max_size]
+            questions = {
+                _question_key(i): {
+                    "type": "choice",
+                    "instructions": f"Which value applies for the {items[i][0].name!r} field?",
+                    "criteria": candidates_to_criteria(items[i][1]),
+                }
+                for i in chunk_indices
+            }
+
+            # Serialized: `system_one` on the shared `laya.Agent` plus the device-resolution/
+            # thread-pinning that follows it are not safe to run concurrently from multiple
+            # threads against one `TrellisModel` instance.
+            with self._lock:
+                response = self._agent.system_one(transcript, questions)
+                # `system_one` can itself fall back to CPU mid-call (e.g. a GPU OOM after
+                # construction), so re-resolve/re-pin after every call rather than trusting the
+                # construction-time value.
+                self.device = self._resolve_device_and_pin_threads()
+
+            answers = response["answers"]
+            for i in chunk_indices:
+                try:
+                    results[i] = _parse_choice_answer(answers, _question_key(i), items[i][1])
+                except Exception as e:  # noqa: BLE001 - one item's malformed answer isolated
+                    results[i] = e
+
+        return results  # type: ignore[return-value]
+
     def discriminate(
         self, transcript: str, field: FieldSpec, candidates: list[str]
     ) -> DiscriminationResult:
-        """Runs one synchronous forward pass choosing among `candidates` for `field`."""
-        if not candidates:
-            raise ValueError("discriminate() requires a non-empty candidates list")
-
-        criteria = candidates_to_criteria(candidates)
-
-        # Serialized: `system_one` on the shared `laya.Agent` plus the device-resolution/
-        # thread-pinning that follows it are not safe to run concurrently from multiple
-        # threads against one `TrellisModel` instance.
-        with self._lock:
-            response = self._agent.system_one(
-                transcript,
-                {
-                    QUESTION_NAME: {
-                        "type": "choice",
-                        "instructions": f"Which value applies for the {field.name!r} field?",
-                        "criteria": criteria,
-                    }
-                },
-            )
-            # `system_one` can itself fall back to CPU mid-call (e.g. a GPU OOM after
-            # construction), so re-resolve/re-pin after every call rather than trusting the
-            # construction-time value.
-            self.device = self._resolve_device_and_pin_threads()
-
-        try:
-            answer = response["answers"][QUESTION_NAME]
-        except KeyError as e:
-            raise ValueError(
-                f"trellis model response is missing the {QUESTION_NAME!r} answer: "
-                f"{response.get('answers')!r}"
-            ) from e
-
-        chosen_index = criteria_key_to_index(answer["choice"])
-        if not 0 <= chosen_index < len(candidates):
-            raise ValueError(
-                f"trellis model returned candidate index {chosen_index} out of range for "
-                f"{len(candidates)} candidates: {answer['choice']!r}"
-            )
-
-        return DiscriminationResult(
-            chosen_index=chosen_index,
-            chosen_value=candidates[chosen_index],
-            confidence=answer["confidence"],
-        )
+        """Runs one synchronous forward pass choosing among `candidates` for `field`. Thin
+        wrapper over `discriminate_batch()` for a single item."""
+        result = self.discriminate_batch(transcript, [(field, candidates)])[0]
+        if isinstance(result, Exception):
+            raise result
+        return result

@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     # Fine-tuning / inference device
     trellis_device: str = "cpu"
     trellis_cpu_threads: int = 4
+    trellis_batch_debounce_seconds: float = 0.02
+    trellis_batch_max_size: int = 16
 
     # Local data locations
     # `checkpoint_dir` is the base directory training writes new timestamped run subdirectories

@@ -25,13 +25,19 @@ class _FakeModel:
     def __init__(self, checkpoint_dir: str, device: str) -> None:
         self.checkpoint_dir = checkpoint_dir
         self.device = device
-        self.calls: list[tuple[str, FieldSpec, list[str]]] = []
+        self.batch_calls: list[tuple[str, list[tuple[FieldSpec, list[str]]]]] = []
+        self.raise_on_batch: Exception | None = None
 
-    def discriminate(
-        self, transcript: str, field: FieldSpec, candidates: list[str]
-    ) -> DiscriminationResult:
-        self.calls.append((transcript, field, candidates))
-        return DiscriminationResult(chosen_index=0, chosen_value=candidates[0], confidence=0.77)
+    def discriminate_batch(
+        self, transcript: str, items: list[tuple[FieldSpec, list[str]]]
+    ) -> list[DiscriminationResult | Exception]:
+        self.batch_calls.append((transcript, items))
+        if self.raise_on_batch is not None:
+            raise self.raise_on_batch
+        return [
+            DiscriminationResult(chosen_index=0, chosen_value=candidates[0], confidence=0.77)
+            for _field, candidates in items
+        ]
 
 
 @pytest.fixture
@@ -64,7 +70,9 @@ async def test_answer_delegates_to_trellis_model(_patched_model):
     assert result["chosen_index"] == 0
     assert result["confidence"] == 0.77
     assert len(_patched_model) == 1
-    assert _patched_model[0].calls == [("some transcript", FIELD, CANDIDATES)]
+    assert _patched_model[0].batch_calls == [
+        ("some transcript", [(FIELD, CANDIDATES)])
+    ]
 
 
 async def test_model_is_constructed_lazily_and_reused(_patched_model):
@@ -94,3 +102,69 @@ async def test_answer_raises_when_candidates_is_none(_patched_model):
 
     with pytest.raises(ValueError):
         await arm.answer("transcript", FIELD, None)
+
+
+OTHER_FIELD = FieldSpec(
+    name="urgency",
+    match_type="canonical_list",
+    required=True,
+    distractor_strategy="swap_sibling_value",
+    value_pool="urgency_levels",
+)
+OTHER_CANDIDATES = ["high", "low", "not mentioned"]
+
+
+async def test_concurrent_answers_for_one_transcript_coalesce_into_one_batch_call(
+    _patched_model,
+):
+    arm = TrellisArm()
+
+    results = await asyncio.gather(
+        arm.answer("shared transcript", FIELD, CANDIDATES),
+        arm.answer("shared transcript", OTHER_FIELD, OTHER_CANDIDATES),
+    )
+
+    assert len(_patched_model) == 1
+    assert len(_patched_model[0].batch_calls) == 1
+    transcript, items = _patched_model[0].batch_calls[0]
+    assert transcript == "shared transcript"
+    assert items == [(FIELD, CANDIDATES), (OTHER_FIELD, OTHER_CANDIDATES)]
+    assert [r["value"] for r in results] == ["leak", "high"]
+
+
+async def test_different_transcripts_never_coalesce(_patched_model):
+    arm = TrellisArm()
+
+    await asyncio.gather(
+        arm.answer("transcript one", FIELD, CANDIDATES),
+        arm.answer("transcript two", OTHER_FIELD, OTHER_CANDIDATES),
+    )
+
+    assert len(_patched_model) == 1
+    assert len(_patched_model[0].batch_calls) == 2
+    transcripts = {transcript for transcript, _items in _patched_model[0].batch_calls}
+    assert transcripts == {"transcript one", "transcript two"}
+
+
+async def test_late_arrival_after_flush_starts_a_fresh_batch(_patched_model):
+    arm = TrellisArm()
+
+    await arm.answer("shared transcript", FIELD, CANDIDATES)
+    await arm.answer("shared transcript", OTHER_FIELD, OTHER_CANDIDATES)
+
+    assert len(_patched_model) == 1
+    assert len(_patched_model[0].batch_calls) == 2
+    for _transcript, items in _patched_model[0].batch_calls:
+        assert len(items) == 1
+
+
+async def test_batch_level_exception_resolves_every_waiting_future(_patched_model):
+    arm = TrellisArm()
+    await arm._get_model()
+    _patched_model[0].raise_on_batch = RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await asyncio.gather(
+            arm.answer("shared transcript", FIELD, CANDIDATES),
+            arm.answer("shared transcript", OTHER_FIELD, OTHER_CANDIDATES),
+        )

@@ -83,6 +83,11 @@ class ItemResult:
     latency_ms: float | None
     state: FiveState | None  # None when `error` is set: the arm call raised before scoring
     error: str | None = None
+    # Real token usage from the arm's own API response, when it has one (gpt-5.1, jev) — feeds
+    # validate/costs.py's real $ cost computation. None for trellis (no token concept) and for
+    # any item whose arm call raised (error is set).
+    input_tokens: int | None = None
+    output_tokens: int | None = None
 
 
 @dataclass
@@ -238,6 +243,8 @@ async def _score_one(
         confidence=answer["confidence"],
         latency_ms=latency_ms,
         state=state,
+        input_tokens=answer.get("input_tokens"),
+        output_tokens=answer.get("output_tokens"),
     )
 
 

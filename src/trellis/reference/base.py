@@ -6,7 +6,7 @@ Each arm module registers itself into `ARMS` by name at import time.
 
 from __future__ import annotations
 
-from typing import Protocol, TypedDict
+from typing import NotRequired, Protocol, TypedDict
 
 from trellis.schema.types import FieldSpec
 
@@ -15,6 +15,11 @@ class ArmAnswer(TypedDict):
     value: str | None
     chosen_index: int | None
     confidence: float
+    # Real token usage from the arm's own API response, when it has one (gpt-5.1, jev) — used to
+    # compute real $ cost in the eval report (validate/costs.py). Absent/None for trellis, which
+    # has no token concept; NotRequired so every existing ArmAnswer construction keeps compiling.
+    input_tokens: NotRequired[int | None]
+    output_tokens: NotRequired[int | None]
 
 
 class ReferenceArm(Protocol):

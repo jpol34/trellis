@@ -44,8 +44,11 @@ def _mock_client(monkeypatch, handler) -> list[httpx.Request]:
     return requests
 
 
-def _chat_completion(content: str) -> dict:
-    return {"choices": [{"message": {"content": content}}]}
+def _chat_completion(content: str, usage: dict | None = None) -> dict:
+    body: dict = {"choices": [{"message": {"content": content}}]}
+    if usage is not None:
+        body["usage"] = usage
+    return body
 
 
 def test_arm_is_registered_into_arms_at_import_time() -> None:
@@ -62,15 +65,23 @@ async def test_answer_parses_evidence_first_found_response(monkeypatch) -> None:
             "confidence": 0.95,
         }
     )
+    usage = {"prompt_tokens": 120, "completion_tokens": 30}
+
     def handler(req: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=_chat_completion(payload))
+        return httpx.Response(200, json=_chat_completion(payload, usage=usage))
 
     requests = _mock_client(monkeypatch, handler)
 
     arm = GPT51Arm()
     result = await arm.answer(TRANSCRIPT, FIELD, None)
 
-    assert result == {"value": "555-123-4567", "chosen_index": None, "confidence": 0.95}
+    assert result == {
+        "value": "555-123-4567",
+        "chosen_index": None,
+        "confidence": 0.95,
+        "input_tokens": 120,
+        "output_tokens": 30,
+    }
     assert len(requests) == 1
     sent = json.loads(requests[0].content)
     assert sent["model"] == "gpt-5.1"
@@ -89,7 +100,13 @@ async def test_answer_absent_field_produces_abstain_output(monkeypatch) -> None:
     no_field_transcript = "Agent: How can I help? Caller: I have a billing question."
     result = await arm.answer(no_field_transcript, FIELD, None)
 
-    assert result == {"value": None, "chosen_index": None, "confidence": 0.0}
+    assert result == {
+        "value": None,
+        "chosen_index": None,
+        "confidence": 0.0,
+        "input_tokens": None,
+        "output_tokens": None,
+    }
 
 
 async def test_answer_tolerates_surrounding_prose_around_json(monkeypatch) -> None:

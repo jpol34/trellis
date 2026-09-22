@@ -23,6 +23,11 @@ class ReferenceArm(Protocol):
     # "open_extraction": `answer()` is always given `candidates=None` and scored by
     # `validate/matchers.py`.
     mode: str
+    # Optional: caps how many `answer()` calls the eval runner keeps in flight for this arm at
+    # once, overriding the runner's own `--concurrency`. Arms that internally serialize (e.g. one
+    # shared model instance behind a lock) should set this below the runner default so queueing
+    # time isn't misreported as inference latency in the rendered report.
+    max_concurrency: int
 
     async def answer(
         self, transcript: str, field: FieldSpec, candidates: list[str] | None

@@ -17,6 +17,10 @@ from trellis.settings import settings
 class TrellisArm:
     name = "trellis"
     mode = "closed_set"
+    # `TrellisModel.discriminate` serializes internally on a lock (see #11's review), so letting
+    # the eval runner keep several calls in flight here would just queue them behind that lock
+    # and report the queueing time as inference latency rather than actually parallelizing.
+    max_concurrency = 1
 
     def __init__(self) -> None:
         # `TrellisModel` construction loads the checkpoint onto `device` — too expensive to pay

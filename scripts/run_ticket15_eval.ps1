@@ -20,12 +20,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$env:OPENAI_API_KEY = Get-StrongboxSecret -Name "OPENAI_API_KEY"
-$env:TYPESAFE_API_KEY = Get-StrongboxSecret -Name "TYPESAFE_API_KEY::jpol34/trellis"
+# Project-scoped Strongbox secrets resolve from the *current directory*, not from a name/project
+# string -- Get-StrongboxSecret only takes -Name (see `Get-Help Get-StrongboxSecret -Full`).
+Push-Location (Join-Path $PSScriptRoot "..")
 try {
-    $env:JEV_BASE_URL = Get-StrongboxSecret -Name "JEV_BASE_URL::jpol34/trellis"
-} catch {
-    Write-Host "JEV_BASE_URL not in Strongbox -- leaving unset, jev arm will use the SDK's default base URL."
+    $env:OPENAI_API_KEY = Get-StrongboxSecret -Name "OPENAI_API_KEY"
+    $env:TYPESAFE_API_KEY = Get-StrongboxSecret -Name "TYPESAFE_API_KEY"
+    $env:JEV_BASE_URL = Get-StrongboxSecret -Name "JEV_BASE_URL" -Optional
+    if (-not $env:JEV_BASE_URL) {
+        Write-Host "JEV_BASE_URL not in Strongbox -- leaving unset, jev arm will use the SDK's default base URL."
+    }
+} finally {
+    Pop-Location
 }
 
 $argList = @("run", "trellis-eval", "--out", $OutPath)

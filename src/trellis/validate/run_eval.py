@@ -170,7 +170,11 @@ async def run_arm(
 ) -> BackendResult:
     result = BackendResult(backend_name=arm.name, mode=arm.mode)
     tasks: list[tuple[str, asyncio.Task[ItemResult]]] = []
-    semaphore = asyncio.Semaphore(max(1, concurrency))
+    # An arm that internally serializes (e.g. one shared model instance behind a lock) can cap
+    # its own concurrency below the runner default, so time spent blocked on that internal lock
+    # doesn't get counted as in-flight and inflate the reported per-item latency.
+    effective_concurrency = min(concurrency, getattr(arm, "max_concurrency", concurrency))
+    semaphore = asyncio.Semaphore(max(1, effective_concurrency))
 
     async def _bounded(record: dict, fld: dict, field_spec: FieldSpec) -> ItemResult:
         async with semaphore:

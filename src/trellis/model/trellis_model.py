@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass
+from typing import Protocol
 
 import laya
 import torch
@@ -25,6 +26,15 @@ class DiscriminationResult:
     chosen_index: int
     chosen_value: str
     confidence: float
+
+
+class TrellisBackend(Protocol):
+    """Anything that can run `discriminate_batch` for `TrellisArm` — locally on CPU/GPU
+    (`TrellisModel`) or against a remote served GPU (`TrellisHttpModel`)."""
+
+    def discriminate_batch(
+        self, transcript: str, items: list[tuple[FieldSpec, list[str]]]
+    ) -> list[DiscriminationResult | Exception]: ...
 
 
 def _question_key(i: int, chunk_size: int) -> str:

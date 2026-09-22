@@ -27,7 +27,13 @@ class Settings(BaseSettings):
     trellis_cpu_threads: int = 4
 
     # Local data locations
+    # `checkpoint_dir` is the base directory training writes new timestamped run subdirectories
+    # under (data/checkpoints/run-<timestamp>/...); `trellis_checkpoint_path` is the exact path
+    # to one already-trained checkpoint directory the eval arm loads directly. Kept as separate
+    # settings since a training run's output base and an eval run's input leaf are never the
+    # same path.
     checkpoint_dir: str = ""
+    trellis_checkpoint_path: str = ""
     training_corpus_dir: str = ""
     eval_set_dir: str = ""
 

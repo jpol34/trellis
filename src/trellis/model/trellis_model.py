@@ -7,6 +7,7 @@ rework, even though no such gateway exists in this project yet.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 
 import laya
@@ -33,6 +34,11 @@ class TrellisModel:
 
     def __init__(self, checkpoint_dir: str, device: str = "cpu") -> None:
         self._agent = laya.load(checkpoint_dir, device=device)
+        # Guards each `discriminate()` call: `torch.set_num_threads` is a process-global
+        # setting and `self.device` is a plain shared attribute, so concurrent calls on this
+        # instance (e.g. via `asyncio.to_thread` from a shared arm) must be serialized rather
+        # than racing each other's device-resolution/thread-pinning.
+        self._lock = threading.Lock()
         self.device = self._resolve_device_and_pin_threads()
 
     def _resolve_device_and_pin_threads(self) -> str:
@@ -56,19 +62,25 @@ class TrellisModel:
             raise ValueError("discriminate() requires a non-empty candidates list")
 
         criteria = candidates_to_criteria(candidates)
-        response = self._agent.system_one(
-            transcript,
-            {
-                QUESTION_NAME: {
-                    "type": "choice",
-                    "instructions": f"Which value applies for the {field.name!r} field?",
-                    "criteria": criteria,
-                }
-            },
-        )
-        # `system_one` can itself fall back to CPU mid-call (e.g. a GPU OOM after construction),
-        # so re-resolve/re-pin after every call rather than trusting the construction-time value.
-        self.device = self._resolve_device_and_pin_threads()
+
+        # Serialized: `system_one` on the shared `laya.Agent` plus the device-resolution/
+        # thread-pinning that follows it are not safe to run concurrently from multiple
+        # threads against one `TrellisModel` instance.
+        with self._lock:
+            response = self._agent.system_one(
+                transcript,
+                {
+                    QUESTION_NAME: {
+                        "type": "choice",
+                        "instructions": f"Which value applies for the {field.name!r} field?",
+                        "criteria": criteria,
+                    }
+                },
+            )
+            # `system_one` can itself fall back to CPU mid-call (e.g. a GPU OOM after
+            # construction), so re-resolve/re-pin after every call rather than trusting the
+            # construction-time value.
+            self.device = self._resolve_device_and_pin_threads()
 
         try:
             answer = response["answers"][QUESTION_NAME]

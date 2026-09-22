@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 import trellis.reference.trellis_arm as trellis_arm_module
@@ -73,6 +75,18 @@ async def test_model_is_constructed_lazily_and_reused(_patched_model):
     await arm.answer("t2", FIELD, CANDIDATES)
 
     assert len(_patched_model) == 1  # same model instance reused across calls
+
+
+async def test_concurrent_first_calls_construct_model_once(_patched_model):
+    arm = TrellisArm()
+
+    await asyncio.gather(
+        arm.answer("t1", FIELD, CANDIDATES),
+        arm.answer("t2", FIELD, CANDIDATES),
+        arm.answer("t3", FIELD, CANDIDATES),
+    )
+
+    assert len(_patched_model) == 1  # the construct-lock prevented a double build
 
 
 async def test_answer_raises_when_candidates_is_none(_patched_model):

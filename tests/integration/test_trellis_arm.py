@@ -38,7 +38,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(autouse=True)
 def _checkpoint_settings(monkeypatch):
-    monkeypatch.setattr(settings, "checkpoint_dir", str(CHECKPOINT_DIR))
+    monkeypatch.setattr(settings, "trellis_checkpoint_path", str(CHECKPOINT_DIR))
     monkeypatch.setattr(settings, "trellis_device", "cpu")
 
 

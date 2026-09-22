@@ -22,10 +22,17 @@ class TrellisArm:
         # `TrellisModel` construction loads the checkpoint onto `device` — too expensive to pay
         # at import time (when `register_arm` below runs), so it's deferred to the first call.
         self._model: TrellisModel | None = None
+        # Guards first-use construction: concurrent `answer()` calls racing on `self._model`
+        # being None could otherwise each load a checkpoint and silently discard one.
+        self._construct_lock = asyncio.Lock()
 
-    def _get_model(self) -> TrellisModel:
+    async def _get_model(self) -> TrellisModel:
         if self._model is None:
-            self._model = TrellisModel(settings.checkpoint_dir, device=settings.trellis_device)
+            async with self._construct_lock:
+                if self._model is None:  # re-check: another task may have won the race
+                    self._model = TrellisModel(
+                        settings.trellis_checkpoint_path, device=settings.trellis_device
+                    )
         return self._model
 
     async def answer(
@@ -34,7 +41,7 @@ class TrellisArm:
         if candidates is None:
             raise ValueError("trellis arm is closed_set-only and requires candidates")
 
-        model = self._get_model()
+        model = await self._get_model()
         result = await asyncio.to_thread(model.discriminate, transcript, field, candidates)
 
         return ArmAnswer(

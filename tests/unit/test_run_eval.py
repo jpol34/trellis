@@ -4,6 +4,9 @@ vs open_extraction candidates), 5-state resolution for every outcome, per-item e
 
 from __future__ import annotations
 
+import asyncio
+import json
+import time
 from pathlib import Path
 
 import pytest
@@ -11,9 +14,11 @@ import pytest
 from trellis.reference.base import ArmAnswer
 from trellis.schema.types import FieldSpec
 from trellis.validate.run_eval import (
+    _EvalCheckpoint,
     _field_specs_by_category,
     load_eval_set,
     run_all,
+    run_arm,
     run_eval,
 )
 
@@ -309,6 +314,99 @@ def test_load_eval_set_reads_every_jsonl_in_dir(tmp_path: Path) -> None:
 def test_load_eval_set_raises_when_no_jsonl_files(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_eval_set(tmp_path)
+
+
+class SlowArm:
+    """A closed-set arm that sleeps `delay` seconds per item — used to distinguish concurrent
+    from sequential arm execution by wall-clock time."""
+
+    def __init__(self, delay: float, chosen_index: int = 0) -> None:
+        self.name = "slow"
+        self.mode = "closed_set"
+        self.delay = delay
+        self.chosen_index = chosen_index
+        self.calls: list[str] = []
+
+    async def answer(self, transcript, field, candidates) -> ArmAnswer:
+        self.calls.append(field.name)
+        await asyncio.sleep(self.delay)
+        return ArmAnswer(
+            value=candidates[self.chosen_index], chosen_index=self.chosen_index, confidence=0.8
+        )
+
+
+async def test_arms_run_concurrently_not_sequentially() -> None:
+    record = _record("r1", NAME_FIELD_RECORD, PET_MENTIONED_RECORD)
+    delay = 0.2
+    # Each arm scores 2 fields concurrently within itself (default concurrency=5), so one arm
+    # alone takes ~delay. 4 arms run sequentially would take ~4*delay; concurrently, ~delay.
+    arms = {f"slow{i}": SlowArm(delay) for i in range(4)}
+
+    started = time.perf_counter()
+    await run_all([record], FIELD_SPECS, arms=arms)
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < delay * 2.5
+
+
+async def test_checkpoint_write_then_resume_skips_and_avoids_recall(tmp_path: Path) -> None:
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    record = _record("r1", NAME_FIELD_RECORD, PET_MENTIONED_RECORD)
+
+    first_arm = ClosedArm(chosen_index=0)
+    checkpoint = _EvalCheckpoint(checkpoint_path)
+    await run_arm(first_arm, [record], FIELD_SPECS, concurrency=5, checkpoint=checkpoint)
+    checkpoint.close()
+
+    assert len(first_arm.calls) == 2
+    assert len(checkpoint_path.read_text(encoding="utf-8").splitlines()) == 2
+
+    second_arm = ClosedArm(chosen_index=0)  # same arm.name ("closed") as first_arm
+    resumed_checkpoint = _EvalCheckpoint(checkpoint_path)
+    result = await run_arm(
+        second_arm, [record], FIELD_SPECS, concurrency=5, checkpoint=resumed_checkpoint
+    )
+    resumed_checkpoint.close()
+
+    assert second_arm.calls == []
+    items = result.datasets["prospect"].items
+    assert {i.field for i in items} == {"name", "pet_info"}
+    # resuming with nothing new to do doesn't grow the checkpoint file
+    assert len(checkpoint_path.read_text(encoding="utf-8").splitlines()) == 2
+
+
+async def test_checkpoint_tolerates_malformed_trailing_line(tmp_path: Path) -> None:
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    good_row = {
+        "backend_name": "closed",
+        "item_id": "r1",
+        "category": "prospect",
+        "field": "name",
+        "predicted_value": "Jane Doe",
+        "gold_value": "Jane Doe",
+        "confidence": 0.8,
+        "latency_ms": 1.0,
+        "state": "present_correct",
+        "error": None,
+    }
+    checkpoint_path.write_text(
+        json.dumps(good_row) + "\n" + '{"backend_name": "closed", "item_i', encoding="utf-8"
+    )
+
+    checkpoint = _EvalCheckpoint(checkpoint_path)
+
+    assert checkpoint.get("closed", "r1", "name") is not None
+    assert len(checkpoint.on_disk) == 1
+
+
+async def test_no_checkpoint_means_no_resume_skip() -> None:
+    arm = ClosedArm(chosen_index=0)
+    record = _record("r1", NAME_FIELD_RECORD, PET_MENTIONED_RECORD)
+
+    await run_all([record], FIELD_SPECS, arms={"closed": arm})
+    await run_all([record], FIELD_SPECS, arms={"closed": arm})
+
+    assert len(arm.calls) == 4
 
 
 async def test_run_eval_limit_truncates_records(tmp_path: Path) -> None:

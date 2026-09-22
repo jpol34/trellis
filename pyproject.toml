@@ -24,6 +24,7 @@ train = [
     "torch>=2.5",
     "accelerate>=1.0",
     "laya>=0.3.5",
+    "py-spy>=0.3",
 ]
 gen = [
     "faker>=30.0",

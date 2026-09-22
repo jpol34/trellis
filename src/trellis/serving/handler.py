@@ -18,10 +18,15 @@ from trellis.schema.types import FieldSpec
 from trellis.settings import settings
 
 _model: TrellisModel | None = None
-# Guards first-invocation construction: RunPod can dispatch concurrent jobs to one worker
-# process, so concurrent `handler()` calls racing on `_model` being `None` could otherwise each
-# load a checkpoint onto the GPU and silently discard one (same hazard `TrellisArm._get_backend`
-# guards against locally).
+# Defense-in-depth, not currently load-bearing: RunPod's worker runs one asyncio event loop on
+# a single OS thread (`rp_scale.py`'s `run_jobs()` dispatches jobs as `asyncio.create_task`s,
+# not real threads), and `handler()` below is a plain synchronous `def`, so it fully blocks that
+# loop for its entire duration — no other job's coroutine can interleave with it, meaning two
+# `handler()` calls can never actually race on `_model` being `None` as things stand today. Kept
+# anyway as double-checked locking in case `handler` is ever converted to `async def` (letting
+# jobs genuinely interleave) — if that happens, reconsider this primitive too, since an
+# uncontended `threading.Lock.acquire()` inside an `async def` is fine, but a *contended* one
+# would itself block the event loop the same way a synchronous `handler()` does now.
 _construct_lock = threading.Lock()
 
 

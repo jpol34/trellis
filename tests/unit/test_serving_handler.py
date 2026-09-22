@@ -103,3 +103,40 @@ def test_empty_items_does_not_crash(fake_model):
     result = handler_module.handler(event)
 
     assert result == {"device_used": "cuda", "results": []}
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        {},  # missing "input" entirely
+        {"input": {"items": []}},  # missing "transcript"
+        {"input": {"transcript": "t", "items": [{"candidates": ["a"]}]}},  # item missing field_name
+        {"input": {"transcript": "t", "items": [{"field_name": "x"}]}},  # item missing candidates
+    ],
+)
+def test_malformed_input_raises_instead_of_misbehaving(fake_model, event):
+    # A malformed event isn't caught here — RunPod's own job runner (confirmed by review against
+    # the installed `runpod` package) wraps the whole `handler()` call and turns any unhandled
+    # exception into a clean `status: "FAILED"` response, same as a model-construction failure.
+    # This test exists to pin that "fails loudly" behavior, not to add handling for it.
+    with pytest.raises(KeyError):
+        handler_module.handler(event)
+
+
+def test_get_model_constructs_once_and_caches(monkeypatch):
+    instances: list[_FakeModel] = []
+
+    def _fake_ctor(checkpoint_dir: str, device: str) -> _FakeModel:
+        instance = _FakeModel(device=device)
+        instances.append(instance)
+        return instance
+
+    monkeypatch.setattr(handler_module, "_model", None)
+    monkeypatch.setattr(handler_module, "TrellisModel", _fake_ctor)
+
+    first = handler_module._get_model()
+    second = handler_module._get_model()
+
+    assert first is second
+    assert len(instances) == 1
+    assert instances[0].device == "cuda"

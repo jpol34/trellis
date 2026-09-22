@@ -35,7 +35,10 @@ _CAVEAT = """> **Different tasks, not a ranked leaderboard.** `trellis` and `jev
 > each item's actual usage reported by the arm's own API response, at real published rates (see
 > `validate/costs.py`) — it's only meaningful for token-billed arms (gpt-5.1, jev). `trellis`'s
 > cost is compute (a RunPod GPU or local CPU), not tokens, and is out of scope here — its "n/a"
-> means "not applicable," not "$0"."""
+> means "not applicable," not "$0". The total also only counts items that returned a value: if a
+> call succeeded but a later parse/validation step raised (the item is scored as an error), any
+> tokens that call actually billed aren't captured — the Cost column is a floor on real spend for
+> a run with errors, not a guaranteed exact total."""
 
 
 def _is_correct(state: FiveState | None) -> bool:

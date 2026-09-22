@@ -8,6 +8,13 @@ for open-extraction arms (asked to extract free text with no candidates). Every 
 resolves to one of `states.FiveState`'s 5 outcomes, `metrics.py` aggregates those into
 accuracy/precision/recall/F1, and `report.py` renders the three-arm markdown comparison.
 
+Arms run concurrently (`run_all`'s outer `asyncio.TaskGroup`) — they're independent backends
+with no shared state, so there's no reason to make gpt-5.1 wait on jev wait on trellis. An
+optional `--checkpoint` file gives crash-safe incremental persistence: each completed
+(arm, item, field) result is appended as it finishes, and a re-run against the same checkpoint
+skips already-done ones instead of re-scoring (and re-billing) them — mirrors
+`generation/corpus_common.py`'s `generate_records` checkpoint pattern one level up.
+
 Result dataclass shape (`ItemResult`/`DatasetResult`/`BackendResult`) mirrors laya-bench's
 `eval/runner.py`, with the "backend" axis being whichever arm names are currently registered and
 the "dataset" axis being the eval set's categories (resident/prospect).
@@ -17,8 +24,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from dataclasses import field as dc_field
 from pathlib import Path
 
@@ -96,6 +104,77 @@ def _field_specs_by_category(
     return {c.category: {f.name: f for f in c.fields} for c in categories}
 
 
+class _EvalCheckpoint:
+    """Optional crash-safe incremental persistence for `run_all`'s per-item results, mirroring
+    `generation/corpus_common.py`'s `generate_records` checkpoint pattern one level up: one
+    shared `asyncio.Lock()` guards append+flush to a single open file handle for the whole run,
+    across every concurrently-running arm (not just one writer, unlike `generate_records`'s
+    single-arm case) — safe under concurrent completions since resume keys strictly by
+    `(backend_name, item_id, field)`, not file position/line order. A malformed or truncated
+    trailing line (the classic kill-mid-write artifact) is treated as never-committed rather than
+    failing the whole resume.
+    """
+
+    def __init__(self, path: Path | None) -> None:
+        self.path = path
+        self._lock = asyncio.Lock()
+        self._file = None
+        self.on_disk: dict[tuple[str, str, str], ItemResult] = (
+            self._load(path) if path is not None else {}
+        )
+
+    @staticmethod
+    def _load(path: Path) -> dict[tuple[str, str, str], ItemResult]:
+        if not path.exists():
+            return {}
+        entries: dict[tuple[str, str, str], ItemResult] = {}
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                raw = json.loads(line)
+                backend_name = raw.pop("backend_name")
+                item = ItemResult(**raw)
+            except (json.JSONDecodeError, KeyError, TypeError):
+                continue
+            entries[(backend_name, item.item_id, item.field)] = item
+        return entries
+
+    def get(
+        self, backend_name: str, item_id: str, field: str, gold_value: str
+    ) -> ItemResult | None:
+        # Guard against a regenerated eval set reusing the same item_id/field with different
+        # content (new transcript, new gold value): a cache hit is only trusted when the gold
+        # value it was scored against still matches what this run's eval set actually has —
+        # otherwise silently serving a stale prediction would corrupt the report with no
+        # warning. Mirrors `generate_records`'s "only checkpoint entries actually part of *this*
+        # call's allocation are reused" guarantee, adapted for content (not just count) drift.
+        cached = self.on_disk.get((backend_name, item_id, field))
+        if cached is not None and cached.gold_value != gold_value:
+            return None
+        return cached
+
+    async def record(self, backend_name: str, item: ItemResult) -> None:
+        if self.path is None or item.error is not None:
+            # Mirrors `generate_records`'s `run_one`: the checkpoint write only happens after a
+            # successful call, so a transient failure (rate limit, timeout) is retried on the
+            # next resume instead of being permanently cached as a scoring failure.
+            return
+        async with self._lock:
+            if self._file is None:
+                self.path.parent.mkdir(parents=True, exist_ok=True)
+                self._file = self.path.open("a", encoding="utf-8")
+            row = {"backend_name": backend_name, **asdict(item)}
+            self._file.write(json.dumps(row) + "\n")
+            self._file.flush()
+
+    def close(self) -> None:
+        if self._file is not None:
+            self._file.close()
+            self._file = None
+
+
 async def _score_one(
     arm: ReferenceArm,
     record: dict,
@@ -167,9 +246,10 @@ async def run_arm(
     records: list[dict],
     field_specs: dict[str, dict[str, FieldSpec]],
     concurrency: int,
+    checkpoint: _EvalCheckpoint | None = None,
 ) -> BackendResult:
     result = BackendResult(backend_name=arm.name, mode=arm.mode)
-    tasks: list[tuple[str, asyncio.Task[ItemResult]]] = []
+    tasks: list[tuple[str, asyncio.Task[ItemResult] | ItemResult]] = []
     # An arm that internally serializes (e.g. one shared model instance behind a lock) can cap
     # its own concurrency below the runner default, so time spent blocked on that internal lock
     # doesn't get counted as in-flight and inflate the reported per-item latency.
@@ -178,19 +258,33 @@ async def run_arm(
 
     async def _bounded(record: dict, fld: dict, field_spec: FieldSpec) -> ItemResult:
         async with semaphore:
-            return await _score_one(arm, record, fld, field_spec)
+            item = await _score_one(arm, record, fld, field_spec)
+        if checkpoint is not None:
+            await checkpoint.record(arm.name, item)
+        return item
 
     async with asyncio.TaskGroup() as tg:
         for record in records:
             category = record["category"]
+            item_id = record["item_id"]
             for fld in record["fields"]:
-                field_spec = field_specs[category][fld["field"]]
+                field_name = fld["field"]
+                cached = (
+                    checkpoint.get(arm.name, item_id, field_name, fld["value"])
+                    if checkpoint
+                    else None
+                )
+                if cached is not None:
+                    tasks.append((category, cached))
+                    continue
+                field_spec = field_specs[category][field_name]
                 task = tg.create_task(_bounded(record, fld, field_spec))
                 tasks.append((category, task))
 
-    for category, task in tasks:
+    for category, task_or_item in tasks:
+        item = task_or_item if isinstance(task_or_item, ItemResult) else task_or_item.result()
         result.datasets.setdefault(category, DatasetResult(dataset_name=category)).items.append(
-            task.result()
+            item
         )
     return result
 
@@ -200,12 +294,19 @@ async def run_all(
     field_specs: dict[str, dict[str, FieldSpec]],
     arms: dict[str, ReferenceArm] | None = None,
     concurrency: int = 5,
+    checkpoint: _EvalCheckpoint | None = None,
 ) -> dict[str, BackendResult]:
+    # Arms are independent backends (each owns its own client/state, none share anything with
+    # one another) and every item-level failure is already isolated inside `_score_one` — so an
+    # arm-level exception escaping `run_arm` would indicate a real bug worth surfacing via
+    # TaskGroup's cancel-siblings-on-first-failure semantics, not something to paper over.
     arms = ARMS if arms is None else arms
-    results: dict[str, BackendResult] = {}
-    for name, arm in arms.items():
-        results[name] = await run_arm(arm, records, field_specs, concurrency)
-    return results
+    async with asyncio.TaskGroup() as tg:
+        tasks = {
+            name: tg.create_task(run_arm(arm, records, field_specs, concurrency, checkpoint))
+            for name, arm in arms.items()
+        }
+    return {name: t.result() for name, t in tasks.items()}
 
 
 def load_eval_set(eval_dir: Path) -> list[dict]:
@@ -223,13 +324,20 @@ async def run_eval(
     arms: dict[str, ReferenceArm] | None = None,
     concurrency: int = 5,
     limit: int | None = None,
+    checkpoint_path: Path | None = None,
 ) -> tuple[dict[str, BackendResult], list[str]]:
     records = load_eval_set(eval_dir)
     if limit is not None:
         records = records[:limit]
     field_specs = _field_specs_by_category(load_all_categories())
     categories = sorted({r["category"] for r in records})
-    results = await run_all(records, field_specs, arms=arms, concurrency=concurrency)
+    checkpoint = _EvalCheckpoint(checkpoint_path)
+    try:
+        results = await run_all(
+            records, field_specs, arms=arms, concurrency=concurrency, checkpoint=checkpoint
+        )
+    finally:
+        checkpoint.close()
     return results, categories
 
 
@@ -262,6 +370,14 @@ def main() -> None:
     parser.add_argument(
         "--out", type=Path, default=None, help="Write the report here instead of stdout."
     )
+    parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        default=None,
+        help="Append each completed (arm, item, field) result here as it finishes, and skip "
+        "already-checkpointed ones on a re-run — crash-safe resume for a long or billed run "
+        "that gets killed partway through. Omit for today's exact no-file behavior.",
+    )
     args = parser.parse_args()
 
     if args.arm_names:
@@ -274,7 +390,11 @@ def main() -> None:
 
     results, categories = asyncio.run(
         run_eval(
-            eval_dir=args.eval_dir, arms=arms, concurrency=args.concurrency, limit=args.limit
+            eval_dir=args.eval_dir,
+            arms=arms,
+            concurrency=args.concurrency,
+            limit=args.limit,
+            checkpoint_path=args.checkpoint,
         )
     )
     report = render_markdown(results, categories)

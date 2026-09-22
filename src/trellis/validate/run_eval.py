@@ -141,11 +141,25 @@ class _EvalCheckpoint:
             entries[(backend_name, item.item_id, item.field)] = item
         return entries
 
-    def get(self, backend_name: str, item_id: str, field: str) -> ItemResult | None:
-        return self.on_disk.get((backend_name, item_id, field))
+    def get(
+        self, backend_name: str, item_id: str, field: str, gold_value: str
+    ) -> ItemResult | None:
+        # Guard against a regenerated eval set reusing the same item_id/field with different
+        # content (new transcript, new gold value): a cache hit is only trusted when the gold
+        # value it was scored against still matches what this run's eval set actually has —
+        # otherwise silently serving a stale prediction would corrupt the report with no
+        # warning. Mirrors `generate_records`'s "only checkpoint entries actually part of *this*
+        # call's allocation are reused" guarantee, adapted for content (not just count) drift.
+        cached = self.on_disk.get((backend_name, item_id, field))
+        if cached is not None and cached.gold_value != gold_value:
+            return None
+        return cached
 
     async def record(self, backend_name: str, item: ItemResult) -> None:
-        if self.path is None:
+        if self.path is None or item.error is not None:
+            # Mirrors `generate_records`'s `run_one`: the checkpoint write only happens after a
+            # successful call, so a transient failure (rate limit, timeout) is retried on the
+            # next resume instead of being permanently cached as a scoring failure.
             return
         async with self._lock:
             if self._file is None:
@@ -255,7 +269,11 @@ async def run_arm(
             item_id = record["item_id"]
             for fld in record["fields"]:
                 field_name = fld["field"]
-                cached = checkpoint.get(arm.name, item_id, field_name) if checkpoint else None
+                cached = (
+                    checkpoint.get(arm.name, item_id, field_name, fld["value"])
+                    if checkpoint
+                    else None
+                )
                 if cached is not None:
                     tasks.append((category, cached))
                     continue

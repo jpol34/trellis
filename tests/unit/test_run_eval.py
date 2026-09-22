@@ -395,8 +395,60 @@ async def test_checkpoint_tolerates_malformed_trailing_line(tmp_path: Path) -> N
 
     checkpoint = _EvalCheckpoint(checkpoint_path)
 
-    assert checkpoint.get("closed", "r1", "name") is not None
+    assert checkpoint.get("closed", "r1", "name", "Jane Doe") is not None
     assert len(checkpoint.on_disk) == 1
+
+
+async def test_checkpoint_stale_gold_value_is_not_reused(tmp_path: Path) -> None:
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    stale_row = {
+        "backend_name": "closed",
+        "item_id": "r1",
+        "category": "prospect",
+        "field": "name",
+        "predicted_value": "Old Name",
+        "gold_value": "Old Name",
+        "confidence": 0.8,
+        "latency_ms": 1.0,
+        "state": "present_correct",
+        "error": None,
+    }
+    checkpoint_path.write_text(json.dumps(stale_row) + "\n", encoding="utf-8")
+
+    checkpoint = _EvalCheckpoint(checkpoint_path)
+
+    # A regenerated eval set reused item_id "r1"/field "name" but with a different gold value —
+    # the stale cached prediction must not be served for the new gold value.
+    assert checkpoint.get("closed", "r1", "name", "Old Name") is not None
+    assert checkpoint.get("closed", "r1", "name", "New Name") is None
+
+
+async def test_checkpoint_does_not_cache_errored_items_and_retries_on_resume(
+    tmp_path: Path,
+) -> None:
+    checkpoint_path = tmp_path / "checkpoint.jsonl"
+    record = _record("r1", NAME_FIELD_RECORD, PET_MENTIONED_RECORD)
+
+    failing_arm = RaisingArm()
+    checkpoint = _EvalCheckpoint(checkpoint_path)
+    await run_arm(failing_arm, [record], FIELD_SPECS, concurrency=5, checkpoint=checkpoint)
+    checkpoint.close()
+
+    # Nothing successful happened, so nothing should have been persisted.
+    assert not checkpoint_path.exists() or checkpoint_path.read_text(encoding="utf-8") == ""
+
+    retry_arm = ClosedArm(chosen_index=0)  # a different (now-working) arm named "raising"
+    retry_arm.name = "raising"
+    resumed_checkpoint = _EvalCheckpoint(checkpoint_path)
+    result = await run_arm(
+        retry_arm, [record], FIELD_SPECS, concurrency=5, checkpoint=resumed_checkpoint
+    )
+    resumed_checkpoint.close()
+
+    # The retry actually ran the arm again (not served a cached error) and succeeded.
+    assert len(retry_arm.calls) == 2
+    items = result.datasets["prospect"].items
+    assert all(item.error is None for item in items)
 
 
 async def test_no_checkpoint_means_no_resume_skip() -> None:

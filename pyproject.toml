@@ -16,7 +16,10 @@ dependencies = [
     "typesafe-sdk>=0.7",
     "phonenumbers>=8.13",
     "rapidfuzz>=3.10",
-    "hangar",
+    # PEP 508 direct URL, not a bare "hangar" name: PyPI already has an unrelated package
+    # called `hangar`, and only uv (not plain `pip install`, which the training/serving
+    # Dockerfiles use) honors [tool.uv.sources] to redirect a bare name to a git source.
+    "hangar @ git+https://github.com/jpol34/hangar",
 ]
 
 [project.optional-dependencies]
@@ -54,11 +57,11 @@ trellis-quality-gates = "trellis.generation.quality_gates:main"
 trellis-finetune = "trellis.finetune.train:main"
 trellis-eval = "trellis.validate.run_eval:main"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/trellis"]
-
-[tool.uv.sources]
-hangar = { git = "https://github.com/jpol34/hangar" }
 
 [tool.ruff]
 line-length = 100

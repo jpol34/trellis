@@ -16,6 +16,7 @@ dependencies = [
     "typesafe-sdk>=0.7",
     "phonenumbers>=8.13",
     "rapidfuzz>=3.10",
+    "hangar",
 ]
 
 [project.optional-dependencies]
@@ -55,6 +56,9 @@ trellis-eval = "trellis.validate.run_eval:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/trellis"]
+
+[tool.uv.sources]
+hangar = { git = "https://github.com/jpol34/hangar" }
 
 [tool.ruff]
 line-length = 100

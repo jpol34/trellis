@@ -1311,6 +1311,14 @@ wheels = [
 ]
 
 [[package]]
+name = "hangar"
+version = "0.1.0"
+source = { git = "https://github.com/jpol34/hangar#d0472b5bcd18239bae11f91b876e223dc948e1d3" }
+dependencies = [
+    { name = "httpx" },
+]
+
+[[package]]
 name = "hf-xet"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3692,6 +3700,7 @@ name = "trellis"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "hangar" },
     { name = "httpx" },
     { name = "phonenumbers" },
     { name = "pydantic" },
@@ -3732,6 +3741,7 @@ requires-dist = [
     { name = "accelerate", marker = "extra == 'train'", specifier = ">=1.0" },
     { name = "anthropic", marker = "extra == 'gen'", specifier = ">=0.40" },
     { name = "faker", marker = "extra == 'gen'", specifier = ">=30.0" },
+    { name = "hangar", git = "https://github.com/jpol34/hangar" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "laya", marker = "extra == 'serve'", specifier = ">=0.3.5" },
     { name = "laya", marker = "extra == 'train'", specifier = ">=0.3.5" },

@@ -35,51 +35,55 @@ def test_pod_spec_matches_settings():
     assert spec.device_env_key == "TRELLIS_DEVICE"
     assert spec.device_env_value == "cuda"
     assert spec.extra_env == {"POD_MAX_HOURS": "4"}
+    assert spec.pod_id is None
 
 
-def test_main_creates_pod_when_no_pod_id_set(monkeypatch):
-    calls = {}
+def test_main_calls_hangar_start_pod_with_built_spec(monkeypatch):
+    captured = {}
+
+    def fake_init(api_key):
+        captured["api_key"] = api_key
 
     def fake_start_pod(spec):
-        calls["spec"] = spec
+        captured["spec"] = spec
         return "pod-new"
 
-    monkeypatch.setattr(hangar, "init", lambda api_key: calls.setdefault("init_key", api_key))
+    monkeypatch.setattr(hangar, "init", fake_init)
     monkeypatch.setattr(hangar, "start_pod", fake_start_pod)
 
     start_pod.main()
 
-    assert calls["init_key"] == "test-runpod-key"
-    assert calls["spec"].name == "trellis-train"
+    assert captured["api_key"] == "test-runpod-key"
+    assert captured["spec"].name == "trellis-train"
+    assert captured["spec"].pod_id is None
 
 
-def test_main_resumes_existing_pod(monkeypatch):
+def test_main_passes_existing_pod_id_to_spec(monkeypatch):
     monkeypatch.setattr(settings, "runpod_pod_id", "pod-existing")
-    calls = {}
+    captured = {}
 
     monkeypatch.setattr(hangar, "init", lambda api_key: None)
-    monkeypatch.setattr(
-        hangar, "pod_action", lambda pod_id, action: calls.setdefault("action", (pod_id, action))
-    )
-    monkeypatch.setattr(hangar, "start_pod", lambda spec: pytest.fail("should not create a pod"))
+
+    def fake_start_pod(spec):
+        captured["spec"] = spec
+        return spec.pod_id
+
+    monkeypatch.setattr(hangar, "start_pod", fake_start_pod)
 
     start_pod.main()
 
-    assert calls["action"] == ("pod-existing", "start")
+    assert captured["spec"].pod_id == "pod-existing"
 
 
-def test_main_recreates_pod_on_capacity_error(monkeypatch):
+def test_main_reports_capacity_fallback_recreate(monkeypatch, capsys):
     monkeypatch.setattr(settings, "runpod_pod_id", "pod-existing")
-    calls = {"deleted": None}
-
-    def fake_pod_action(pod_id, action):
-        raise hangar.PodCapacityError("no capacity")
 
     monkeypatch.setattr(hangar, "init", lambda api_key: None)
-    monkeypatch.setattr(hangar, "pod_action", fake_pod_action)
-    monkeypatch.setattr(hangar, "delete_pod", lambda pod_id: calls.__setitem__("deleted", pod_id))
     monkeypatch.setattr(hangar, "start_pod", lambda spec: "pod-fresh")
 
     start_pod.main()
 
-    assert calls["deleted"] == "pod-existing"
+    out = capsys.readouterr().out
+    assert "pod-existing" in out
+    assert "pod-fresh" in out
+    assert "billable" in out

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     runpod_api_key: str = ""
     runpod_pod_id: str = ""
     pod_max_hours: int = 4
+    pod_idle_timeout_s: int = 3600
     runpod_image: str = ""
     runpod_gpu_type_id: str = "NVIDIA GeForce RTX 4090"
     runpod_disk_gb: int = 20

@@ -20,7 +20,10 @@ def _pod_spec() -> PodSpec:
         device_env_key="TRELLIS_DEVICE",
         device_env_value=settings.trellis_device,
         pod_id=settings.runpod_pod_id or None,
-        extra_env={"POD_MAX_HOURS": str(settings.pod_max_hours)},
+        extra_env={
+            "POD_MAX_HOURS": str(settings.pod_max_hours),
+            "POD_IDLE_TIMEOUT_S": str(settings.pod_idle_timeout_s),
+        },
         registry_id=settings.runpod_registry_id,
     )
 
@@ -54,8 +57,12 @@ def main() -> None:
         print(f"[green]Pod created: {pod_id}.[/green] Save this as RUNPOD_POD_ID for future runs.")
 
     print(
-        f"The in-pod autostop watchdog will stop it automatically after POD_MAX_HOURS "
-        f"({settings.pod_max_hours}h) regardless of activity — see stack/autostop.py."
+        f"The in-pod autostop watchdog stops the pod on either of two independent conditions: "
+        f"a fixed ceiling of POD_MAX_HOURS ({settings.pod_max_hours}h) regardless of activity, "
+        f"or hangar's idle-detection firing after POD_IDLE_TIMEOUT_S "
+        f"({settings.pod_idle_timeout_s}s) of no heartbeat and no SSH activity — see "
+        "stack/autostop.py. Start training over SSH with `hangar-run <command>` (not directly) "
+        "so the heartbeat flows and idle-detection can see it's alive."
     )
 
 

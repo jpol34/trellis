@@ -1313,7 +1313,7 @@ wheels = [
 [[package]]
 name = "hangar"
 version = "0.1.0"
-source = { git = "https://github.com/jpol34/hangar#d0472b5bcd18239bae11f91b876e223dc948e1d3" }
+source = { git = "https://github.com/jpol34/hangar#eb82916cf98eb460a5d3563b744834bca0a2d1d1" }
 dependencies = [
     { name = "httpx" },
 ]

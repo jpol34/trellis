@@ -15,6 +15,7 @@ def _settings(monkeypatch):
     monkeypatch.setattr(settings, "runpod_registry_id", "")
     monkeypatch.setattr(settings, "trellis_device", "cuda")
     monkeypatch.setattr(settings, "pod_max_hours", 4)
+    monkeypatch.setattr(settings, "pod_idle_timeout_s", 3600)
 
 
 def test_main_exits_without_api_key(monkeypatch):
@@ -34,7 +35,7 @@ def test_pod_spec_matches_settings():
     assert spec.ports == ["22/tcp"]
     assert spec.device_env_key == "TRELLIS_DEVICE"
     assert spec.device_env_value == "cuda"
-    assert spec.extra_env == {"POD_MAX_HOURS": "4"}
+    assert spec.extra_env == {"POD_MAX_HOURS": "4", "POD_IDLE_TIMEOUT_S": "3600"}
     assert spec.pod_id is None
 
 

@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     reference_gpt_model: str = "gpt-5.1"
     jev_base_url: str = ""
 
+    # Generation provider selection: "openai" (default) calls OpenAI's Chat Completions API;
+    # "anthropic" keeps the original Claude-only generation path. Mirrors the `trellis_backend`
+    # pattern below.
+    generation_provider: Literal["anthropic", "openai"] = "openai"
+    generation_openai_model: str = ""
+
     # Fine-tuning / inference device
     trellis_device: str = "cpu"
     trellis_cpu_threads: int = 4

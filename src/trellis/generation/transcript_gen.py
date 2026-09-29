@@ -1,11 +1,12 @@
 """One-call transcript generation: given a persona, category, call reason, and variability
-tier, asks Claude Sonnet for one realistic call transcript that naturally weaves in the
-injected ground-truth values (never the distractors, which the model never sees) in language
-matching the persona and the variability tier's linguistic/conversational tags.
+tier, asks the configured generation provider (`settings.generation_provider`) for one realistic
+call transcript that naturally weaves in the injected ground-truth values (never the
+distractors, which the model never sees) in language matching the persona and the variability
+tier's linguistic/conversational tags.
 
 `generate_scenario_item` is the top-level, CLI-callable entry point: given `category`,
 `call_reason`, and `variability_tier`, it generates a persona and a transcript (both requiring
-live Anthropic API calls) and returns one complete generated item.
+live LLM API calls) and returns one complete generated item.
 """
 
 from __future__ import annotations
@@ -18,14 +19,14 @@ import yaml
 from faker import Faker
 
 from trellis.generation.distractors import build_candidates
-from trellis.generation.http import extract_anthropic_text, post_with_retry
+from trellis.generation.http import call_llm
 from trellis.generation.personas import Persona, generate_personas
 from trellis.generation.values import generate_value
 from trellis.schema.loader import REPO_ROOT
 from trellis.schema.types import CategorySpec
-from trellis.settings import settings
 
-_ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+_MAX_TOKENS = 2048
+_TIMEOUT_S = 120.0
 _VARIABILITY_TIERS_YAML = REPO_ROOT / "configs" / "variability_tiers.yaml"
 
 
@@ -101,22 +102,7 @@ def _find_char_offset(transcript: str, value: str) -> int | None:
 
 
 async def _call_transcript_model(client: httpx.AsyncClient, prompt: str) -> str:
-    resp = await post_with_retry(
-        client,
-        _ANTHROPIC_URL,
-        headers={
-            "x-api-key": settings.anthropic_api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-        json={
-            "model": settings.generation_claude_model,
-            "max_tokens": 2048,
-            "messages": [{"role": "user", "content": prompt}],
-        },
-        timeout=120.0,
-    )
-    return extract_anthropic_text(resp.json())
+    return await call_llm(client, prompt, max_tokens=_MAX_TOKENS, timeout=_TIMEOUT_S)
 
 
 async def generate_item(
@@ -167,8 +153,10 @@ async def generate_scenario_item(
     category: CategorySpec, call_reason: str, variability_tier: str
 ) -> dict:
     """CLI-callable entry point: given a category, call reason, and variability tier, generates
-    a persona and one complete transcript item end to end, making the necessary live Anthropic
-    API calls itself. Requires `settings.anthropic_api_key` (sourced via Strongbox) to be set."""
+    a persona and one complete transcript item end to end, making the necessary live LLM API
+    calls itself. Requires the API key for the configured `settings.generation_provider`
+    (`settings.openai_api_key` or `settings.anthropic_api_key`, sourced via Strongbox) to be
+    set."""
     async with httpx.AsyncClient() as client:
         persona = (await generate_personas(1, client))[0]
         item = await generate_item(category, call_reason, variability_tier, persona, client)

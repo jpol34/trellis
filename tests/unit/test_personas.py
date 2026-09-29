@@ -5,13 +5,21 @@ import json
 import httpx
 
 from trellis.generation.personas import Persona, _parse_persona, generate_personas
+from trellis.settings import settings
 
 
 def _anthropic_response(persona: dict) -> httpx.Response:
     return httpx.Response(200, json={"content": [{"type": "text", "text": json.dumps(persona)}]})
 
 
-async def test_generate_personas_returns_requested_count():
+def _openai_response(persona: dict) -> httpx.Response:
+    return httpx.Response(
+        200, json={"choices": [{"message": {"content": json.dumps(persona)}}]}
+    )
+
+
+async def test_generate_personas_returns_requested_count(monkeypatch):
+    monkeypatch.setattr(settings, "generation_provider", "anthropic")
     personas = [
         {
             "age_range": f"{20 + i}-{30 + i}",
@@ -52,7 +60,8 @@ def test_parse_persona_tolerates_brace_in_field_value_and_trailing_prose():
     assert result.background == "works as a {full-stack} engineer"
 
 
-async def test_generate_personas_is_sequential_and_each_prompt_lists_prior_personas():
+async def test_generate_personas_is_sequential_and_each_prompt_lists_prior_personas(monkeypatch):
+    monkeypatch.setattr(settings, "generation_provider", "anthropic")
     personas = [
         {
             "age_range": "20-30",
@@ -102,7 +111,10 @@ async def test_generate_personas_zero_returns_empty_list_and_makes_no_calls():
     assert calls["n"] == 0
 
 
-async def test_generate_one_requests_a_token_budget_that_wont_truncate_a_verbose_persona():
+async def test_generate_one_requests_a_token_budget_that_wont_truncate_a_verbose_persona(
+    monkeypatch,
+):
+    monkeypatch.setattr(settings, "generation_provider", "anthropic")
     # Regression: a small max_tokens truncated a verbose persona's JSON mid-string (real API
     # call cut off before the closing brace), raising an unhandled parse error and losing an
     # entire batch's progress in a run with no checkpointing. Budget must be generous relative
@@ -125,3 +137,31 @@ async def test_generate_one_requests_a_token_budget_that_wont_truncate_a_verbose
         await generate_personas(1, client)
 
     assert seen["max_tokens"] >= 1024
+
+
+async def test_generate_personas_uses_openai_when_configured(monkeypatch):
+    monkeypatch.setattr(settings, "generation_provider", "openai")
+    monkeypatch.setattr(settings, "generation_openai_model", "gpt-test-model")
+    monkeypatch.setattr(settings, "openai_api_key", "openai-key")
+    persona_data = {
+        "age_range": "25-35",
+        "tone": "calm",
+        "verbosity": "brief",
+        "background": "teacher",
+        "speech_quirks": "none",
+    }
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["body"] = json.loads(request.content)
+        return _openai_response(persona_data)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await generate_personas(1, client)
+
+    assert len(result) == 1
+    assert result[0] == Persona(**persona_data)
+    assert seen["url"] == "https://api.openai.com/v1/chat/completions"
+    assert seen["body"]["model"] == "gpt-test-model"
+    assert seen["body"]["response_format"] == {"type": "json_object"}

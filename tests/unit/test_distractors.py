@@ -123,6 +123,60 @@ def test_shift_window_is_member_of_same_fuzzy_pool():
         assert d != real
 
 
+def test_price_quoted_perturb_amount_is_numeric_and_near_real_value():
+    field = _field(PROSPECT, "price_quoted")
+    rng, faker = _rng_faker(12)
+    real = "2000"
+    distractors = generate_distractors(real, field, faker, rng)
+    assert len(distractors) == 3
+    for d in distractors:
+        assert d.isdigit()
+        assert d != real
+        assert abs(int(d) - int(real)) <= int(real) * 0.5 + 1
+
+
+def test_amenities_requested_swap_sibling_value_is_member_of_pool_minus_real():
+    field = _field(PROSPECT, "amenities_requested")
+    rng, faker = _rng_faker(13)
+    pool = load_value_pool("amenities")
+    real = pool[0]
+    distractors = generate_distractors(real, field, faker, rng)
+    assert len(distractors) == 3
+    for d in distractors:
+        assert d in pool
+        assert d != real
+
+
+def test_permission_to_enter_swap_sibling_value_is_member_of_pool_minus_real():
+    field = _field(RESIDENT, "permission_to_enter")
+    rng, faker = _rng_faker(14)
+    pool = load_value_pool("permission_to_enter")
+    assert len(pool) == 4
+    real = pool[0]
+    # Regression guard: a 3-value pool would leave only 2 siblings after excluding the real
+    # value, which raises ValueError in swap_sibling_value. The 4th pool member is what makes
+    # 3 distractors reachable at all.
+    distractors = generate_distractors(real, field, faker, rng)
+    assert len(distractors) == 3
+    for d in distractors:
+        assert d in pool
+        assert d != real
+
+
+def test_work_order_issue_shift_window_is_member_of_same_fuzzy_pool():
+    field = _field(RESIDENT, "work_order_issue")
+    rng, faker = _rng_faker(15)
+    from trellis.generation.values import fuzzy_phrase_pool
+
+    pool = fuzzy_phrase_pool("work_order_issue")
+    real = pool[0]
+    distractors = generate_distractors(real, field, faker, rng)
+    assert len(distractors) == 3
+    for d in distractors:
+        assert d in pool
+        assert d != real
+
+
 def test_swap_adjacent_unit_is_numeric_and_near_real_value():
     field = _field(RESIDENT, "unit_number")
     rng, faker = _rng_faker(8)

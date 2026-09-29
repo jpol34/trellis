@@ -40,6 +40,15 @@ fields:
     match_type: fuzzy
     required: false
     distractor_strategy: shift_window
+  - name: price_quoted
+    match_type: numeric_tolerance
+    required: false
+    distractor_strategy: perturb_amount
+  - name: amenities_requested
+    match_type: canonical_list
+    required: false
+    distractor_strategy: swap_sibling_value
+    value_pool: amenities
 
 scenarios:
   call_reasons:

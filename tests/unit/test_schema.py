@@ -30,6 +30,8 @@ def test_resident_loads_and_validates() -> None:
         "callback_window",
         "lease_renewal_date",
         "balance_owed",
+        "permission_to_enter",
+        "work_order_issue",
     }
     assert spec.scenarios.call_reasons
 
@@ -47,6 +49,8 @@ def test_prospect_loads_and_validates() -> None:
         "pet_info",
         "parking_need",
         "tour_slot",
+        "price_quoted",
+        "amenities_requested",
     }
 
 

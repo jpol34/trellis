@@ -39,6 +39,15 @@ fields:
     match_type: numeric_tolerance
     required: false
     distractor_strategy: perturb_amount
+  - name: permission_to_enter
+    match_type: canonical_list
+    required: false
+    distractor_strategy: swap_sibling_value
+    value_pool: permission_to_enter
+  - name: work_order_issue
+    match_type: fuzzy
+    required: false
+    distractor_strategy: shift_window
 
 scenarios:
   call_reasons:

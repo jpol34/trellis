@@ -76,6 +76,39 @@ def test_fuzzy_field_returns_a_short_plausible_phrase():
         assert 0 < len(value) < 60
 
 
+def test_price_quoted_field_is_a_plausible_number():
+    field = next(f for f in CATEGORIES["prospect"].fields if f.name == "price_quoted")
+    for seed in range(10):
+        value = generate_value(field, Faker(), random.Random(seed))
+        assert value.isdigit()
+        assert 900 <= int(value) <= 4500
+
+
+def test_amenities_requested_field_is_member_of_its_value_pool():
+    field = next(f for f in CATEGORIES["prospect"].fields if f.name == "amenities_requested")
+    pool = load_value_pool("amenities")
+    for seed in range(10):
+        value = generate_value(field, Faker(), random.Random(seed))
+        assert value in pool
+
+
+def test_permission_to_enter_field_is_member_of_its_value_pool():
+    field = next(f for f in CATEGORIES["resident"].fields if f.name == "permission_to_enter")
+    pool = load_value_pool("permission_to_enter")
+    assert len(pool) == 4
+    for seed in range(10):
+        value = generate_value(field, Faker(), random.Random(seed))
+        assert value in pool
+
+
+def test_work_order_issue_field_returns_a_plausible_phrase():
+    field = next(f for f in CATEGORIES["resident"].fields if f.name == "work_order_issue")
+    for seed in range(10):
+        value = generate_value(field, Faker(), random.Random(seed))
+        assert isinstance(value, str)
+        assert 0 < len(value) < 80
+
+
 def test_every_field_in_every_category_produces_a_non_empty_value():
     for spec in CATEGORIES.values():
         for f in spec.fields:

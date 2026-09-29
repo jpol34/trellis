@@ -14,6 +14,7 @@ from trellis.generation.transcript_gen import (
     load_variability_tags,
 )
 from trellis.schema.loader import CATEGORIES_DIR, load_all_categories
+from trellis.settings import settings
 
 CATEGORIES = {spec.category: spec for spec in load_all_categories(CATEGORIES_DIR)}
 PROSPECT = CATEGORIES["prospect"]
@@ -57,7 +58,8 @@ async def test_generate_item_unknown_call_reason_raises():
             await generate_item(PROSPECT, "not_a_real_reason", "clean", PERSONA, client)
 
 
-async def test_generate_item_produces_ground_truth_for_every_field():
+async def test_generate_item_produces_ground_truth_for_every_field(monkeypatch):
+    monkeypatch.setattr(settings, "generation_provider", "anthropic")
     transport = _fake_transcript_response("Caller: hi. Agent: hi.")
     async with httpx.AsyncClient(transport=transport) as client:
         item = await generate_item(
@@ -82,7 +84,8 @@ async def test_generate_item_produces_ground_truth_for_every_field():
         assert len(gt.candidates) in (4, 5)
 
 
-async def test_generate_item_char_offset_found_when_value_is_in_transcript():
+async def test_generate_item_char_offset_found_when_value_is_in_transcript(monkeypatch):
+    monkeypatch.setattr(settings, "generation_provider", "anthropic")
     faker = _seeded_faker(0)
     rng = random.Random(0)
     # Deterministic real value for the name field, embedded verbatim in the fake transcript.
@@ -103,7 +106,8 @@ async def test_generate_item_char_offset_found_when_value_is_in_transcript():
     assert transcript_text[name_gt.char_offset : name_gt.char_offset + len(real_name)] == real_name
 
 
-async def test_generate_item_char_offset_none_when_value_absent_from_transcript():
+async def test_generate_item_char_offset_none_when_value_absent_from_transcript(monkeypatch):
+    monkeypatch.setattr(settings, "generation_provider", "anthropic")
     async with httpx.AsyncClient(
         transport=_fake_transcript_response("Caller: I'd like to ask about pricing.")
     ) as client:
@@ -120,7 +124,8 @@ async def test_generate_item_char_offset_none_when_value_absent_from_transcript(
     assert any(gt.char_offset is None for gt in item.ground_truth)
 
 
-async def test_generate_item_sends_variability_tags_and_values_in_prompt():
+async def test_generate_item_sends_variability_tags_and_values_in_prompt(monkeypatch):
+    monkeypatch.setattr(settings, "generation_provider", "anthropic")
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -144,3 +149,41 @@ async def test_generate_item_sends_variability_tags_and_values_in_prompt():
     assert "typos" in prompt  # a noisy-tier linguistic tag
     for gt in item.ground_truth:
         assert gt.value in prompt
+
+
+async def test_generate_item_uses_openai_when_configured(monkeypatch):
+    monkeypatch.setattr(settings, "generation_provider", "openai")
+    monkeypatch.setattr(settings, "generation_openai_model", "gpt-test-model")
+    monkeypatch.setattr(settings, "openai_api_key", "openai-key")
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        body = json.loads(request.content)
+        seen["body"] = body
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {"message": {"content": "Caller: hi via openai. Agent: hi."}}
+                ]
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        item = await generate_item(
+            PROSPECT,
+            "new_inquiry",
+            "clean",
+            PERSONA,
+            client,
+            rng=random.Random(0),
+            faker=_seeded_faker(0),
+        )
+
+    assert item.transcript == "Caller: hi via openai. Agent: hi."
+    assert seen["url"] == "https://api.openai.com/v1/chat/completions"
+    assert seen["body"]["model"] == "gpt-test-model"
+    # transcript_gen never passes json_mode=True, so the OpenAI branch must not force JSON
+    # output here even though it's configured as the active provider.
+    assert "response_format" not in seen["body"]

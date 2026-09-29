@@ -1,4 +1,5 @@
-"""Sequential caller-persona generation via Claude Sonnet.
+"""Sequential caller-persona generation via the configured generation provider
+(`settings.generation_provider`).
 
 Personas are generated one at a time, not fanned out concurrently: each new prompt lists every
 persona already produced in this batch and is explicitly instructed to differ from all of them.
@@ -14,10 +15,10 @@ from dataclasses import dataclass
 
 import httpx
 
-from trellis.generation.http import extract_anthropic_text, post_with_retry
-from trellis.settings import settings
+from trellis.generation.http import call_llm
 
-_ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+_MAX_TOKENS = 1024
+_TIMEOUT_S = 60.0
 
 
 @dataclass(frozen=True)
@@ -78,26 +79,13 @@ def _parse_persona(text: str) -> Persona:
 
 
 async def _generate_one(client: httpx.AsyncClient, prior: list[Persona]) -> Persona:
-    resp = await post_with_retry(
-        client,
-        _ANTHROPIC_URL,
-        headers={
-            "x-api-key": settings.anthropic_api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-        json={
-            "model": settings.generation_claude_model,
-            # Generous relative to the actual JSON payload: this model can emit a `thinking`
-            # content block before the visible text even without a thinking parameter set (see
-            # extract_anthropic_text), so a small budget silently truncates a persona whose
-            # free-text fields run long into invalid JSON instead of erroring clearly.
-            "max_tokens": 1024,
-            "messages": [{"role": "user", "content": _persona_prompt(prior)}],
-        },
-        timeout=60.0,
+    # _MAX_TOKENS is generous relative to the actual JSON payload: an Anthropic model can emit a
+    # `thinking` content block before the visible text even without a thinking parameter set
+    # (see extract_anthropic_text), so a small budget silently truncates a persona whose
+    # free-text fields run long into invalid JSON instead of erroring clearly.
+    text = await call_llm(
+        client, _persona_prompt(prior), max_tokens=_MAX_TOKENS, timeout=_TIMEOUT_S, json_mode=True
     )
-    text = extract_anthropic_text(resp.json())
     return _parse_persona(text)
 
 

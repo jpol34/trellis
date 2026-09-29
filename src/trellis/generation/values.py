@@ -22,6 +22,11 @@ from trellis.schema.types import FieldSpec
 _NUMERIC_RANGES: dict[str, tuple[int, int]] = {
     "budget": (900, 4500),
     "balance_owed": (0, 3200),
+    # Deliberately reuses budget's exact range: both are monthly-rent-scale dollar figures
+    # spoken close together in real calls, so same-range perturb_amount distractors are
+    # realistically confusable across the two fields — the actual failure mode worth
+    # training against.
+    "price_quoted": (900, 4500),
 }
 _DEFAULT_NUMERIC_RANGE = (10, 5000)
 
@@ -41,6 +46,46 @@ _FUZZY_PHRASE_POOLS: dict[str, list[str]] = {
         "before 9am",
         "Friday afternoon",
         "whenever, I work from home",
+    ],
+    # Spans plumbing/electrical/appliance/pest/HVAC/structural/access/noise so distractors
+    # (shift_window) stay within-category confusable rather than trivially off-topic.
+    "work_order_issue": [
+        # plumbing
+        "leaking kitchen sink",
+        "dripping kitchen faucet",
+        "toilet flooding the bathroom",
+        "no hot water",
+        "leaking pipe under the sink",
+        # electrical
+        "bathroom light flickering",
+        "outlet not working in the bedroom",
+        "circuit breaker keeps tripping",
+        # appliance
+        "refrigerator not cooling",
+        "garbage disposal not working",
+        "noisy fridge",
+        "washing machine won't drain",
+        "dishwasher leaking",
+        # pest
+        "cockroach infestation in the kitchen",
+        "ants near the bathroom sink",
+        "mice in the walls",
+        # HVAC
+        "AC not working",
+        "water heater not providing hot water",
+        "no heat coming from the vents",
+        "thermostat not responding",
+        # structural
+        "crack in the bedroom ceiling",
+        "window won't close all the way",
+        "front door doesn't lock properly",
+        # access
+        "keycard issue with gym access",
+        "key fob not working for pool access",
+        "key fob not granting gym access",
+        # noise
+        "smoke detector keeps chirping",
+        "loud banging noise from the vents",
     ],
 }
 _DEFAULT_FUZZY_PHRASE_POOL = [

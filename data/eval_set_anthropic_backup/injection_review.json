@@ -1,0 +1,826 @@
+[
+  {
+    "flag_id": "eval-prospect-new_inquiry-clean-2::email::injection::templated_pattern",
+    "item_id": "eval-prospect-new_inquiry-clean-2",
+    "field": "email",
+    "sentence": "Caller: It's xdavies@example.net.",
+    "reason": "templated_pattern",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-new_inquiry-natural-0::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-new_inquiry-natural-0",
+    "field": "name",
+    "sentence": "Caller: Sure, it's Jermaine Mendoza.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-new_inquiry-natural-1::name::injection::templated_pattern",
+    "item_id": "eval-prospect-new_inquiry-natural-1",
+    "field": "name",
+    "sentence": "Caller: It's Danielle Brown.",
+    "reason": "templated_pattern",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-new_inquiry-natural-2::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-new_inquiry-natural-2",
+    "field": "name",
+    "sentence": "Caller: Sure, it's Stacey Gardner.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-new_inquiry-natural-2::phone::injection::short_and_formulaic",
+    "item_id": "eval-prospect-new_inquiry-natural-2",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 568-377-9748.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-new_inquiry-natural-2::email::injection::short_and_formulaic",
+    "item_id": "eval-prospect-new_inquiry-natural-2",
+    "field": "email",
+    "sentence": "Caller: Yeah, it's valenzuelathomas@example.com.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-new_inquiry-natural-2::bedroom_type::injection::short_and_formulaic",
+    "item_id": "eval-prospect-new_inquiry-natural-2",
+    "field": "bedroom_type",
+    "sentence": "Caller: Just a studio, honestly.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-natural-0::name::injection::templated_pattern",
+    "item_id": "eval-prospect-scheduling_tour-natural-0",
+    "field": "name",
+    "sentence": "Caller: It's Angela Long.",
+    "reason": "templated_pattern",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-natural-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-natural-0",
+    "field": "phone",
+    "sentence": "Caller: 604-634-1224.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-natural-0::email::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-natural-0",
+    "field": "email",
+    "sentence": "Caller: Yeah, it's nguyenmelinda@example.com.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-natural-1::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-natural-1",
+    "field": "name",
+    "sentence": "Caller: Robert Wells.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-natural-1::phone::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-natural-1",
+    "field": "phone",
+    "sentence": "Caller: Phone's 965-562-5004.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-natural-1::email::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-natural-1",
+    "field": "email",
+    "sentence": "Email's kylebryant@example.net.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-natural-1::tour_slot::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-natural-1",
+    "field": "tour_slot",
+    "sentence": "Caller: Saturday morning.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-natural-2::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-natural-2",
+    "field": "name",
+    "sentence": "Caller: Yes, it's Christina Larsen.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-natural-2::move_in_date::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-natural-2",
+    "field": "move_in_date",
+    "sentence": "yeah, 2026-10-14, that's the one.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-natural-0::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-application_followup-natural-0",
+    "field": "name",
+    "sentence": "Caller: Sure, it's Nicole Jones.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-natural-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-prospect-application_followup-natural-0",
+    "field": "phone",
+    "sentence": "Caller: Yeah, it's 779-509-3014.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-natural-2::phone::injection::short_and_formulaic",
+    "item_id": "eval-prospect-application_followup-natural-2",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 769-709-3524.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-natural-2::move_in_date::injection::short_and_formulaic",
+    "item_id": "eval-prospect-application_followup-natural-2",
+    "field": "move_in_date",
+    "sentence": "Caller: We were hoping for 2026-08-24.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-natural-3::phone::injection::short_and_formulaic",
+    "item_id": "eval-prospect-application_followup-natural-3",
+    "field": "phone",
+    "sentence": "Caller: Yeah, sure, it's 571-593-4538.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-lease_terms_question-natural-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-prospect-lease_terms_question-natural-0",
+    "field": "phone",
+    "sentence": "It's 572-812-6920, and my email is iphillips@example.com.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-lease_terms_question-natural-0::email::injection::short_and_formulaic",
+    "item_id": "eval-prospect-lease_terms_question-natural-0",
+    "field": "email",
+    "sentence": "It's 572-812-6920, and my email is iphillips@example.com.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-lease_terms_question-natural-1::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-lease_terms_question-natural-1",
+    "field": "name",
+    "sentence": "Caller: Elizabeth Robinson.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-lease_terms_question-natural-1::tour_slot::injection::short_and_formulaic",
+    "item_id": "eval-prospect-lease_terms_question-natural-1",
+    "field": "tour_slot",
+    "sentence": "Caller: Tuesday after 5pm.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-lease_terms_question-natural-2::bedroom_type::injection::short_and_formulaic",
+    "item_id": "eval-prospect-lease_terms_question-natural-2",
+    "field": "bedroom_type",
+    "sentence": "Agent: Okay, 1br, noted.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-availability_check-natural-0::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-availability_check-natural-0",
+    "field": "name",
+    "sentence": "Caller: Yeah, it's Tyler Davis.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-availability_check-natural-0::budget::injection::short_and_formulaic",
+    "item_id": "eval-prospect-availability_check-natural-0",
+    "field": "budget",
+    "sentence": "Agent: Got it, 2546.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-availability_check-natural-1::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-availability_check-natural-1",
+    "field": "name",
+    "sentence": "Caller: Jeffrey Bradshaw.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-availability_check-natural-2::phone::injection::short_and_formulaic",
+    "item_id": "eval-prospect-availability_check-natural-2",
+    "field": "phone",
+    "sentence": "It's 476-414-9993, and my email is matthew11@example.net.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-availability_check-natural-2::email::injection::short_and_formulaic",
+    "item_id": "eval-prospect-availability_check-natural-2",
+    "field": "email",
+    "sentence": "It's 476-414-9993, and my email is matthew11@example.net.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-new_inquiry-noisy-0::email::injection::short_and_formulaic",
+    "item_id": "eval-prospect-new_inquiry-noisy-0",
+    "field": "email",
+    "sentence": "And email is rossmatthew@example.net, r-o-s-s-matthew@example.net, that's my email, yeah.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-new_inquiry-noisy-1::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-new_inquiry-noisy-1",
+    "field": "name",
+    "sentence": "Caller: Yeah it's Edward Jones.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-noisy-0::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-noisy-0",
+    "field": "name",
+    "sentence": "Caller: Yeah it's Jeremy Duarte.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-noisy-0::bedroom_type::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-noisy-0",
+    "field": "bedroom_type",
+    "sentence": "Caller: A studio, I think?",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-noisy-1::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-noisy-1",
+    "field": "name",
+    "sentence": "Caller: Katherine Wilson.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-noisy-2::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-noisy-2",
+    "field": "name",
+    "sentence": "Caller: Justin Smith.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-noisy-2::phone::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-noisy-2",
+    "field": "phone",
+    "sentence": "Agent: Got it, 539-864-3686.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-scheduling_tour-noisy-2::budget::injection::short_and_formulaic",
+    "item_id": "eval-prospect-scheduling_tour-noisy-2",
+    "field": "budget",
+    "sentence": "Agent: Okay, 2543, got it.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-noisy-0::tour_slot::injection::short_and_formulaic",
+    "item_id": "eval-prospect-application_followup-noisy-0",
+    "field": "tour_slot",
+    "sentence": "Caller: Saturday morning, if that's possible?",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-noisy-1::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-application_followup-noisy-1",
+    "field": "name",
+    "sentence": "Caller: William Dyer.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-noisy-1::email::injection::short_and_formulaic",
+    "item_id": "eval-prospect-application_followup-noisy-1",
+    "field": "email",
+    "sentence": "wtran@example.net.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-noisy-1::tour_slot::injection::short_and_formulaic",
+    "item_id": "eval-prospect-application_followup-noisy-1",
+    "field": "tour_slot",
+    "sentence": "Thursday around lunchtime maybe?",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-noisy-2::phone::injection::templated_pattern",
+    "item_id": "eval-prospect-application_followup-noisy-2",
+    "field": "phone",
+    "sentence": "Caller: It's 617-453-7972.",
+    "reason": "templated_pattern",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-application_followup-noisy-3::tour_slot::injection::short_and_formulaic",
+    "item_id": "eval-prospect-application_followup-noisy-3",
+    "field": "tour_slot",
+    "sentence": "Would next Monday at 10am work for you?",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-lease_terms_question-noisy-0::move_in_date::injection::short_and_formulaic",
+    "item_id": "eval-prospect-lease_terms_question-noisy-0",
+    "field": "move_in_date",
+    "sentence": "Caller: 2026-11-29.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-lease_terms_question-noisy-1::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-lease_terms_question-noisy-1",
+    "field": "name",
+    "sentence": "Caller: Sure, sure, it's Jim Castro.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-lease_terms_question-noisy-1::phone::injection::short_and_formulaic",
+    "item_id": "eval-prospect-lease_terms_question-noisy-1",
+    "field": "phone",
+    "sentence": "Caller: Yeah, it's 350-205-5124.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-availability_check-noisy-0::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-availability_check-noisy-0",
+    "field": "name",
+    "sentence": "Caller: Alexis Lopez.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-availability_check-noisy-1::name::injection::short_and_formulaic",
+    "item_id": "eval-prospect-availability_check-noisy-1",
+    "field": "name",
+    "sentence": "Caller: Lori Torres.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-prospect-availability_check-noisy-2::bedroom_type::injection::short_and_formulaic",
+    "item_id": "eval-prospect-availability_check-noisy-2",
+    "field": "bedroom_type",
+    "sentence": "Caller: We need a 3br.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-natural-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_emergency-natural-0",
+    "field": "phone",
+    "sentence": "Caller: Yeah, it's 576-480-3355.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-natural-0::email::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_emergency-natural-0",
+    "field": "email",
+    "sentence": "Caller: Sure, it's sheri69@example.com.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-natural-1::unit_number::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_emergency-natural-1",
+    "field": "unit_number",
+    "sentence": "Caller: Yeah, it's unit 428.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-natural-2::name::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_emergency-natural-2",
+    "field": "name",
+    "sentence": "Caller: Amy Jones.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-natural-2::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_emergency-natural-2",
+    "field": "phone",
+    "sentence": "Caller: 321-661-1043.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-natural-2::unit_number::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_emergency-natural-2",
+    "field": "unit_number",
+    "sentence": "Unit 278.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-natural-1::unit_number::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-natural-1",
+    "field": "unit_number",
+    "sentence": "Caller: Yeah, it's 352.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-natural-1::issue_severity::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-natural-1",
+    "field": "issue_severity",
+    "sentence": "Caller: No, no, it's routine.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-natural-2::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-natural-2",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 426-432-3753.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-natural-2::callback_window::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-natural-2",
+    "field": "callback_window",
+    "sentence": "Agent: Noted \u2014 lunchtime, around noon.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-natural-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-natural-0",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 708-802-2773, and my email is ayalalinda@example.org.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-natural-0::email::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-natural-0",
+    "field": "email",
+    "sentence": "Caller: Sure, it's 708-802-2773, and my email is ayalalinda@example.org.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-natural-1::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-natural-1",
+    "field": "phone",
+    "sentence": "Caller: You can reach me at 368-658-9535.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-natural-1::unit_number::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-natural-1",
+    "field": "unit_number",
+    "sentence": "Caller: Yeah, sure, it's unit 249.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-natural-2::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-natural-2",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 637-725-5416.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-natural-2::unit_number::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-natural-2",
+    "field": "unit_number",
+    "sentence": "Caller: Yeah, sure, it's unit 350.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-natural-3::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-natural-3",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 351-717-3416.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-lease_renewal-natural-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-lease_renewal-natural-0",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 403-701-4922.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-lease_renewal-natural-2::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-lease_renewal-natural-2",
+    "field": "phone",
+    "sentence": "Caller: Oh, sure, it's 360-298-9454.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-lease_renewal-natural-3::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-lease_renewal-natural-3",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 824-309-2364.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-lease_renewal-natural-3::unit_number::injection::short_and_formulaic",
+    "item_id": "eval-resident-lease_renewal-natural-3",
+    "field": "unit_number",
+    "sentence": "Caller: Yeah, it's unit 280.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-noise_hoa-natural-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-noise_hoa-natural-0",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 267-397-7235.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-noise_hoa-natural-1::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-noise_hoa-natural-1",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 815-250-2676.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-noise_hoa-natural-2::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-noise_hoa-natural-2",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 855-201-9426.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-noisy-0::name::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_emergency-noisy-0",
+    "field": "name",
+    "sentence": "Caller: Krystal Peters.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-noisy-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_emergency-noisy-0",
+    "field": "phone",
+    "sentence": "Caller: Yeah it's 813-277-3239.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-noisy-0::lease_renewal_date::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_emergency-noisy-0",
+    "field": "lease_renewal_date",
+    "sentence": "Yeah, lease-renewal-date, 2026-12-09.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-noisy-1::name::injection::templated_pattern",
+    "item_id": "eval-resident-maintenance_emergency-noisy-1",
+    "field": "name",
+    "sentence": "It's Amy Faulkner.",
+    "reason": "templated_pattern",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-noisy-1::email::injection::templated_pattern",
+    "item_id": "eval-resident-maintenance_emergency-noisy-1",
+    "field": "email",
+    "sentence": "Caller: It's sandrahoward@example.org.",
+    "reason": "templated_pattern",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_emergency-noisy-3::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_emergency-noisy-3",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 719-971-4205.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-noisy-0::name::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-noisy-0",
+    "field": "name",
+    "sentence": "Caller: Joseph Smith.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-noisy-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-noisy-0",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 810-734-4443.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-noisy-0::email::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-noisy-0",
+    "field": "email",
+    "sentence": "Caller: Yeah \u2014 richard95@example.com.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-noisy-0::callback_window::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-noisy-0",
+    "field": "callback_window",
+    "sentence": "Agent: Noted \u2014 lunchtime, around noon.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-noisy-1::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-noisy-1",
+    "field": "phone",
+    "sentence": "Caller: Sure, it's 548-806-7420.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-noisy-2::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-noisy-2",
+    "field": "phone",
+    "sentence": "Caller: You can reach me at 705-543-1964.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-noisy-2::email::injection::templated_pattern",
+    "item_id": "eval-resident-maintenance_routine-noisy-2",
+    "field": "email",
+    "sentence": "It's stevewebb@example.com.",
+    "reason": "templated_pattern",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-maintenance_routine-noisy-2::issue_severity::injection::short_and_formulaic",
+    "item_id": "eval-resident-maintenance_routine-noisy-2",
+    "field": "issue_severity",
+    "sentence": "it's routine, I'd say, nothing urgent.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-noisy-0::name::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-noisy-0",
+    "field": "name",
+    "sentence": "It's Paul Price, unit 439.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-noisy-0::unit_number::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-noisy-0",
+    "field": "unit_number",
+    "sentence": "It's Paul Price, unit 439.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-noisy-1::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-noisy-1",
+    "field": "phone",
+    "sentence": "Caller: Yeah it's 472-594-3536.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-rent_balance-noisy-1::unit_number::injection::short_and_formulaic",
+    "item_id": "eval-resident-rent_balance-noisy-1",
+    "field": "unit_number",
+    "sentence": "Unit 271.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-lease_renewal-noisy-0::name::injection::short_and_formulaic",
+    "item_id": "eval-resident-lease_renewal-noisy-0",
+    "field": "name",
+    "sentence": "Caller: Robert Woods.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-lease_renewal-noisy-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-lease_renewal-noisy-0",
+    "field": "phone",
+    "sentence": "Caller: 964-714-1015.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-lease_renewal-noisy-1::balance_owed::injection::short_and_formulaic",
+    "item_id": "eval-resident-lease_renewal-noisy-1",
+    "field": "balance_owed",
+    "sentence": "It looks like $1126 is currently owed.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-lease_renewal-noisy-2::name::injection::short_and_formulaic",
+    "item_id": "eval-resident-lease_renewal-noisy-2",
+    "field": "name",
+    "sentence": "Caller: Vicki Cruz, unit 427.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-lease_renewal-noisy-2::unit_number::injection::short_and_formulaic",
+    "item_id": "eval-resident-lease_renewal-noisy-2",
+    "field": "unit_number",
+    "sentence": "Caller: Vicki Cruz, unit 427.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-noise_hoa-noisy-0::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-noise_hoa-noisy-0",
+    "field": "phone",
+    "sentence": "Caller: Yeah, it's 975-413-4525.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-noise_hoa-noisy-0::email::injection::short_and_formulaic",
+    "item_id": "eval-resident-noise_hoa-noisy-0",
+    "field": "email",
+    "sentence": "Caller: Yeah that's fine, it's conradjared@example.org.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-noise_hoa-noisy-1::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-noise_hoa-noisy-1",
+    "field": "phone",
+    "sentence": "Caller: Yeah, it's 695-518-5150.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-noise_hoa-noisy-1::unit_number::injection::short_and_formulaic",
+    "item_id": "eval-resident-noise_hoa-noisy-1",
+    "field": "unit_number",
+    "sentence": "Caller: Yeah it's 214.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  },
+  {
+    "flag_id": "eval-resident-noise_hoa-noisy-3::phone::injection::short_and_formulaic",
+    "item_id": "eval-resident-noise_hoa-noisy-3",
+    "field": "phone",
+    "sentence": "Caller: Sure it's 629-828-3425.",
+    "reason": "short_and_formulaic",
+    "reviewed": null
+  }
+]

@@ -1,0 +1,106 @@
+[
+  {
+    "flag_id": "train-resident-maintenance_emergency-clean-10::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-maintenance_emergency-clean-10",
+    "field": "issue_type",
+    "value": "no_ac",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-maintenance_emergency-noisy-13::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-maintenance_emergency-noisy-13",
+    "field": "issue_type",
+    "value": "no_ac",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-maintenance_routine-clean-0::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-maintenance_routine-clean-0",
+    "field": "issue_type",
+    "value": "mold",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-maintenance_routine-natural-1::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-maintenance_routine-natural-1",
+    "field": "issue_type",
+    "value": "no_ac",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-rent_balance-clean-18::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-rent_balance-clean-18",
+    "field": "issue_type",
+    "value": "no_ac",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-rent_balance-clean-20::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-rent_balance-clean-20",
+    "field": "issue_type",
+    "value": "mold",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-rent_balance-noisy-6::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-rent_balance-noisy-6",
+    "field": "issue_type",
+    "value": "no_ac",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-rent_balance-noisy-15::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-rent_balance-noisy-15",
+    "field": "issue_type",
+    "value": "no_ac",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-rent_balance-noisy-21::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-rent_balance-noisy-21",
+    "field": "issue_type",
+    "value": "mold",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-lease_renewal-natural-9::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-lease_renewal-natural-9",
+    "field": "issue_type",
+    "value": "mold",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-noise_hoa-natural-15::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-noise_hoa-natural-15",
+    "field": "issue_type",
+    "value": "mold",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-noise_hoa-noisy-0::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-noise_hoa-noisy-0",
+    "field": "issue_type",
+    "value": "mold",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  },
+  {
+    "flag_id": "train-resident-noise_hoa-noisy-20::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "train-resident-noise_hoa-noisy-20",
+    "field": "issue_type",
+    "value": "mold",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "flag_id": "prospect/application_followup/noisy::train-prospect-application_followup-noisy-12::train-prospect-application_followup-noisy-19",
+    "item_a": "train-prospect-application_followup-noisy-12",
+    "item_b": "train-prospect-application_followup-noisy-19",
+    "scenario_cell": [
+      "prospect",
+      "application_followup",
+      "noisy"
+    ],
+    "distance": 0.14485766738723638,
+    "reviewed": null
+  }
+]

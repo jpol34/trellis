@@ -1,0 +1,10 @@
+[
+  {
+    "flag_id": "eval-resident-noise_hoa-natural-0::issue_type::distractor_tell::real_value_length_outlier",
+    "item_id": "eval-resident-noise_hoa-natural-0",
+    "field": "issue_type",
+    "value": "no_ac",
+    "reason": "real_value_length_outlier",
+    "reviewed": null
+  }
+]

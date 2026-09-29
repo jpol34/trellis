@@ -1,0 +1,110 @@
+[
+  {
+    "flag_id": "prospect/application_followup/clean::eval-prospect-application_followup-clean-1::eval-prospect-application_followup-clean-2",
+    "item_a": "eval-prospect-application_followup-clean-1",
+    "item_b": "eval-prospect-application_followup-clean-2",
+    "scenario_cell": [
+      "prospect",
+      "application_followup",
+      "clean"
+    ],
+    "distance": 0.14587016109405027,
+    "reviewed": null
+  },
+  {
+    "flag_id": "prospect/application_followup/noisy::eval-prospect-application_followup-noisy-0::eval-prospect-application_followup-noisy-3",
+    "item_a": "eval-prospect-application_followup-noisy-0",
+    "item_b": "eval-prospect-application_followup-noisy-3",
+    "scenario_cell": [
+      "prospect",
+      "application_followup",
+      "noisy"
+    ],
+    "distance": 0.13831716756504953,
+    "reviewed": null
+  },
+  {
+    "flag_id": "prospect/availability_check/noisy::eval-prospect-availability_check-noisy-0::eval-prospect-availability_check-noisy-1",
+    "item_a": "eval-prospect-availability_check-noisy-0",
+    "item_b": "eval-prospect-availability_check-noisy-1",
+    "scenario_cell": [
+      "prospect",
+      "availability_check",
+      "noisy"
+    ],
+    "distance": 0.1464113821075298,
+    "reviewed": null
+  },
+  {
+    "flag_id": "resident/maintenance_emergency/clean::eval-resident-maintenance_emergency-clean-0::eval-resident-maintenance_emergency-clean-1",
+    "item_a": "eval-resident-maintenance_emergency-clean-0",
+    "item_b": "eval-resident-maintenance_emergency-clean-1",
+    "scenario_cell": [
+      "resident",
+      "maintenance_emergency",
+      "clean"
+    ],
+    "distance": 0.14920151522660952,
+    "reviewed": null
+  },
+  {
+    "flag_id": "resident/maintenance_emergency/clean::eval-resident-maintenance_emergency-clean-1::eval-resident-maintenance_emergency-clean-2",
+    "item_a": "eval-resident-maintenance_emergency-clean-1",
+    "item_b": "eval-resident-maintenance_emergency-clean-2",
+    "scenario_cell": [
+      "resident",
+      "maintenance_emergency",
+      "clean"
+    ],
+    "distance": 0.14745546286576072,
+    "reviewed": null
+  },
+  {
+    "flag_id": "resident/rent_balance/natural::eval-resident-rent_balance-natural-0::eval-resident-rent_balance-natural-1",
+    "item_a": "eval-resident-rent_balance-natural-0",
+    "item_b": "eval-resident-rent_balance-natural-1",
+    "scenario_cell": [
+      "resident",
+      "rent_balance",
+      "natural"
+    ],
+    "distance": 0.13352591184062412,
+    "reviewed": null
+  },
+  {
+    "flag_id": "resident/rent_balance/natural::eval-resident-rent_balance-natural-0::eval-resident-rent_balance-natural-2",
+    "item_a": "eval-resident-rent_balance-natural-0",
+    "item_b": "eval-resident-rent_balance-natural-2",
+    "scenario_cell": [
+      "resident",
+      "rent_balance",
+      "natural"
+    ],
+    "distance": 0.14867404854704402,
+    "reviewed": null
+  },
+  {
+    "flag_id": "resident/lease_renewal/natural::eval-resident-lease_renewal-natural-2::eval-resident-lease_renewal-natural-3",
+    "item_a": "eval-resident-lease_renewal-natural-2",
+    "item_b": "eval-resident-lease_renewal-natural-3",
+    "scenario_cell": [
+      "resident",
+      "lease_renewal",
+      "natural"
+    ],
+    "distance": 0.1362796582390129,
+    "reviewed": null
+  },
+  {
+    "flag_id": "resident/noise_hoa/natural::eval-resident-noise_hoa-natural-0::eval-resident-noise_hoa-natural-2",
+    "item_a": "eval-resident-noise_hoa-natural-0",
+    "item_b": "eval-resident-noise_hoa-natural-2",
+    "scenario_cell": [
+      "resident",
+      "noise_hoa",
+      "natural"
+    ],
+    "distance": 0.13401577579176394,
+    "reviewed": null
+  }
+]
